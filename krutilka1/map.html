@@ -8,16 +8,7 @@
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
-        
-        /* Жестко фиксируем карту во весь экран */
-        #map { 
-            width: 100vw; 
-            height: 100vh; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            z-index: 1; 
-        }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         
         /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
         #version-tag {
@@ -25,7 +16,7 @@
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; /* Сигнальный зеленый */
+            color: #00ff66;
             padding: 6px 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
@@ -39,74 +30,75 @@
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // DATA_ENGINE v5.0.2</div>
+<div id="version-tag">SYSTEM // ANONYMOUS_RADAR v6.0.1</div>
 <div id="map"></div>
 
 <script type="text/javascript">
-    // 1. ДЕШИФРАТОР СТРОКИ ИЗ URL (?data={{AREHERE}})
+    // 1. АНОНИМНЫЙ ДЕШИФРАТОР СТРОКИ ДАННЫХ (ищет паттерн вида "Е2", "Б0")
     const urlParams = new URLSearchParams(window.location.search);
     const rawData = urlParams.get('data') || '';
 
-    // Функция точного подсчета 21-значных ID читателей на основе регулярки
-    function extractNodeDensity(nodeCode) {
+    function extractNodeDensity(nodeLetter) {
         if (!rawData) return 0;
+        // Находим индекс буквы (например, 'E') в строке данных
+        const index = rawData.indexOf(nodeLetter);
+        if (index === -1) return 0;
         
-        // Регулярное выражение ищет маркер Ноды и все приклеенные за ним ID
-        const regex = new RegExp(nodeCode + '_(?:_\\d{20})*', 'g');
-        const match = rawData.match(regex);
-        if (!match) return 0;
-        
-        // Берем первое совпадение из массива и высчитываем чистую длину хвоста
-        const matchedString = match[0];
-        const cleanTail = matchedString.replace(nodeCode + '_', '');
-        return Math.floor(cleanTail.length / 21);
+        // Забираем символ, который идет сразу за буквой, и превращаем в число
+        const densityValue = parseInt(rawData.charAt(index + 1), 10);
+        return isNaN(densityValue) ? 0 : densityValue;
     }
 
-    // 2. Инициализация карты Яндекса
-    ymaps.ready(function () {
+    // 2. Запуск импортозамещенного движка Яндекс Карт
+    ymaps.ready(initRadar);
+
+    function initRadar() {
         var myMap = new ymaps.Map("map", {
-            center: [54.0, 45.0], // Центрируем радар
+            center: [55.0, 50.0], // Центрируем радар на РФ
             zoom: 4,
             controls: ['zoomControl']
         });
 
-        // Полная географическая матрица Происшествий мета-романа (6 Нод)
-        const nodeMatrix = [
-            { code: 'Е1', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855], desc: 'Линейный экшен, полярный транзит.' },
-            { code: 'Б1', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373], desc: 'Билингвальный сдвиг, демонтаж Стелы.' },
-            { code: 'Г1', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173], desc: 'Философия фашин, дворовые формулы.' },
-            { code: 'А1', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351], desc: 'Матрёшка восприятия, оперативники.' },
-            { code: 'В1', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050], desc: 'Рекурсивные каламбуры Моргунова.' },
-            { code: 'Д1', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686], desc: 'Параллельное зрение, взлом зрительной коры.' }
+        // Географическая матрица Происшествий мета-романа (6 Нод)
+        var nodeMatrix = [
+            { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855], desc: 'Линейный экшен, полярный транзит.' },
+            { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373], desc: 'Билингвальный сдвиг, демонтаж Стелы.' },
+            { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173], desc: 'Философия фашин, дворовые формулы.' },
+            { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351], desc: 'Матрёшка восприятия, оперативники.' },
+            { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050], desc: 'Рекурсивные каламбуры Моргунова.' },
+            { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686], desc: 'Параллельное зрение, взлом зрительной коры.' }
         ];
 
-        // 3. Динамический рендеринг маркеров на основе плотности данных
+        // 3. Рендеринг маркеров на основе анонимных цифр
         nodeMatrix.forEach(function(item) {
             const density = extractNodeDensity(item.code);
             
-            // Если люди есть — красим метку в сочный зеленый и открываем бабл автоматически. 
-            // Если пусто — оставляем серую иконку в режиме ожидания.
-            const markerPreset = density > 0 ? 'islands#darkGreenDotIconWithCaption' : 'islands#darkGrayDotIcon';
-            const densityStatus = density > 0 
-                ? '<b style="color: #2ea043;">' + density + ' контуров</b>' 
-                : '<span style="color: #8b949e;">0 (ПУСТО)</span>';
+            // Если в комнате есть люди — подсвечиваем ярко-зеленым, если пусто — темно-серым
+            const iconPreset = density > 0 ? 'islands#darkGreenDotIconWithCaption' : 'islands#greyDotIcon';
+            
+            const statusText = density > 0 
+                ? `Плотность когнитивных контуров: <b style="color: #2ea043;">${density}</b>` 
+                : `Плотность когнитивных контуров: <span style="color: #8b949e;">0 (ПУСТО)</span>`;
 
             var placemark = new ymaps.Placemark(item.coords, {
+                iconCaption: density > 0 ? `${item.code} (${density})` : item.code,
                 balloonContentHeader: item.name,
-                balloonContentBody: '<p>' + item.desc + '</p><p>Плотность когнитивных процессоров в сети: ' + densityStatus + '</p>',
-                iconCaption: density > 0 ? 'АКТИВНА [' + density + ']' : '' // Выводим счетчик прямо на карту, если там кто-то есть
+                balloonContentBody: `<div style="font-family: monospace; font-size: 12px; color: #333;">
+                                        <p style="margin: 0 0 8px 0;">${item.desc}</p>
+                                        ${statusText}
+                                     </div>`
             }, {
-                preset: markerPreset
+                preset: iconPreset
             });
-
+            
             myMap.geoObjects.add(placemark);
 
-            // Автоматически разворачиваем бабл для обитаемых зон
+            // Если люди в Ноде есть — автоматически открываем бабл при загрузке
             if (density > 0) {
-                placemark.balloon.open();
+                setTimeout(function() { placemark.balloon.open(); }, 500);
             }
         });
-    });
+    }
 </script>
 
 </body>
