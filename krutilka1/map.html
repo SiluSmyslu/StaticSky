@@ -4,10 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
-    <!-- Официальный API Яндекс Карт -->
+    <!-- Официальный и независимый API Яндекс Карт -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
+        
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (из рабочего билда v4.0.1) */
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
         
         /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
         #version-tag {
@@ -15,88 +25,53 @@
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #00ff66;
+            color: #ffaa00; /* Возвращаем ярко-оранжевый маркер триумфа */
             padding: 6px 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
+            font-family: monospace;
             font-size: 12px;
             font-weight: bold;
             z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.3);
+            box-shadow: 0 0 10px rgba(255,170,0,0.3);
             pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // ANONYMOUS_RADAR v6.0.3</div>
-
-<!-- Жестко и инлайново фиксируем размеры контейнера карты, чтобы Яндекс не схлопнул его в ноль -->
-<div id="map" style="width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;"></div>
+<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.0.2</div>
+<div id="map"></div>
 
 <script type="text/javascript">
-    // 1. АНОНИМНЫЙ ДЕШИФРАТОР СТРОКИ ДАННЫХ
-    var urlParams = new URLSearchParams(window.location.search);
-    var rawData = urlParams.get('data') || '';
+    // Проверяем, загрузился ли Яндекс, и запускаем инициализацию
+    ymaps.ready(function () {
+        var myMap = new ymaps.Map("map", {
+            center: [55.0, 50.0], // Центрируем на РФ
+            zoom: 4,
+            controls: ['zoomControl']
+        });
 
-    function extractNodeDensity(nodeLetter) {
-        if (!rawData) return 0;
-        var index = rawData.indexOf(nodeLetter);
-        if (index === -1) return 0;
-        
-        var densityValue = parseInt(rawData.charAt(index + 1), 10);
-        return isNaN(densityValue) ? 0 : densityValue;
-    }
+        // Железобетонная сетка базовых точек твоего Лабиринта
+        var nodeMatrix = [
+            { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
+            { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
+            { name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
+            { name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+        ];
 
-    // 2. Инициализация и запуск радара Яндекса
-    ymaps.ready(function() {
-        try {
-            var myMap = new ymaps.Map("map", {
-                center: [55.0, 50.0], // Центрируем на РФ
-                zoom: 4,
-                controls: ['zoomControl']
+        // Клеим маркеры на карту
+        nodeMatrix.forEach(function(item) {
+            var placemark = new ymaps.Placemark(item.coords, {
+                balloonContentHeader: item.name,
+                balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
+            }, {
+                preset: 'islands#darkOrangeDotIcon' // Те самые оранжевые точки под лор
             });
-
-            // Географическая матрица Происшествий мета-романа (6 Нод)
-            var nodeMatrix = [
-                { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855], desc: 'Линейный экшен, полярный транзит.' },
-                { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373], desc: 'Билингвальный сдвиг, демонтаж Стелы.' },
-                { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173], desc: 'Философия фашин, дворовые формулы.' },
-                { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351], desc: 'Метрёшка восприятия, оперативники.' },
-                { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050], desc: 'Рекурсивные каламбуры Моргунова.' },
-                { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686], desc: 'Параллельное зрение, взлом зрительной коры.' }
-            ];
-
-            // 3. Рендеринг тактических маркеров
-            nodeMatrix.forEach(function(item) {
-                var density = extractNodeDensity(item.code);
-                var iconPreset = density > 0 ? 'islands#darkGreenDotIconWithCaption' : 'islands#greyDotIcon';
-                
-                var statusText = density > 0 
-                    ? 'Плотность когнитивных контуров: <b style="color: #2ea043;">' + density + '</b>' 
-                    : 'Плотность когнитивных контуров: <span style="color: #8b949e;">0 (ПУСТО)</span>';
-
-                var placemark = new ymaps.Placemark(item.coords, {
-                    iconCaption: density > 0 ? item.code + ' (' + density + ')' : item.code,
-                    balloonContentHeader: item.name,
-                    balloonContentBody: '<div style="font-family: monospace; font-size: 12px; color: #333;">' +
-                                            '<p style="margin: 0 0 8px 0;">' + item.desc + '</p>' +
-                                            statusText +
-                                         '</div>'
-                }, {
-                    preset: iconPreset
-                });
-                
-                myMap.geoObjects.add(placemark);
-
-                // Если люди в Ноде есть — автоматически открываем бабл при загрузке
-                if (density > 0) {
-                    setTimeout(function() { placemark.balloon.open(); }, 500);
-                }
-            });
-        } catch(e) {
-            console.error(e);
-        }
+            myMap.geoObjects.add(placemark);
+        });
     });
 </script>
 
