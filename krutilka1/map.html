@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
     <!-- Официальный и независимый API Яндекс Карт -->
-    <script src="https://yandex.ru" type="text/javascript"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
         
-        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (из рабочего билда v4.0.1) */
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (не даст ей схлопнуться в 0 пикселей) */
         #map { 
             width: 100vw; 
             height: 100vh; 
@@ -25,7 +25,7 @@
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #ffaa00; /* Возвращаем ярко-оранжевый маркер триумфа */
+            color: #ffaa00; /* Ярко-оранжевый цвет для новой эпохи тестов */
             padding: 6px 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
@@ -40,7 +40,7 @@
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.0.2</div>
+<div id="version-tag">SYSTEM // INTERFACE_FIXED v4.0.1</div>
 <div id="map"></div>
 
 <script type="text/javascript">
@@ -52,14 +52,11 @@
             controls: ['zoomControl']
         });
 
-        // Железобетонная сетка базовых точек твоего Лабиринта
+        // Сетка базовых точек твоего Лабиринта
         var nodeMatrix = [
             { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
             { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
-            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
-            { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
-            { name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
-            { name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] }
         ];
 
         // Клеим маркеры на карту
@@ -68,7 +65,7 @@
                 balloonContentHeader: item.name,
                 balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
             }, {
-                preset: 'islands#darkOrangeDotIcon' // Те самые оранжевые точки под лор
+                preset: 'islands#darkOrangeDotIcon' // Перекрашиваем точки под новый билд
             });
             myMap.geoObjects.add(placemark);
         });
