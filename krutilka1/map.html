@@ -1,70 +1,75 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EBAVGD // OPENLAYERS RADAR</title>
-    <!-- Подключаем независимый OpenLayers из открытого стабильного CDN -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    <script src="https://cloudflare.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
+    <!-- Официальный и независимый API Яндекс Карт -->
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; }
-        #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        .version-tag {
-            position: absolute; top: 10px; left: 10px; background: rgba(13,17,23,0.9);
-            color: #388bfd; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
-            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
+        
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (не даст ей схлопнуться в 0 пикселей) */
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
+        #version-tag {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(13, 17, 23, 0.95);
+            color: #ffaa00; /* Ярко-оранжевый цвет для новой эпохи тестов */
+            padding: 6px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(255,170,0,0.3);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div class="version-tag">SYSTEM // OPENLAYERS v8.2.0</div>
+<div id="version-tag">SYSTEM // INTERFACE_FIXED v4.0.1</div>
 <div id="map"></div>
 
-<script>
-    // Создаем карту на движке OpenLayers
-    const map = new ol.Map({
-        target: 'map',
-        // Подключаем российские тайлы Спутника (Ростелеком)
-        layers: [
-            new ol.layer.Tile({
-                source: new ol.source.XYZ({
-                    url: 'https://sputnik.ru{z}/{x}/{y}.png'
-                })
-            })
-        ],
-        view: new ol.View({
-            center: ol.proj.fromLonLat([50.0, 55.0]), // Центрируем на РФ
-            zoom: 4
-        }),
-        controls: [] // Убираем лишние кнопки управления
-    });
-
-    // Функция создания маркера Ноды
-    function addNodeMarker(lon, lat, text) {
-        const marker = new ol.Feature({
-            geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat]))
+<script type="text/javascript">
+    // Проверяем, загрузился ли Яндекс, и запускаем инициализацию
+    ymaps.ready(function () {
+        var myMap = new ymaps.Map("map", {
+            center: [55.0, 50.0], // Центрируем на РФ
+            zoom: 4,
+            controls: ['zoomControl']
         });
-        
-        // Стилизуем маркер под тактическую синюю точку
-        marker.setStyle(new ol.style.Style({
-            image: new ol.style.Circle({
-                radius: 7,
-                fill: new ol.style.Fill({ color: '#388bfd' }),
-                stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
-            })
-        }));
 
-        const vectorSource = new ol.source.Vector({ features: [marker] });
-        const vectorLayer = new ol.layer.Vector({ source: vectorSource });
-        map.addLayer(vectorLayer);
-    }
+        // Сетка базовых точек твоего Лабиринта
+        var nodeMatrix = [
+            { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] }
+        ];
 
-    // Ставим три базовые Ноды на карту
-    addNodeMarker(37.2855, 55.3544); // Аэродром Троицк
-    addNodeMarker(13.7373, 51.0504); // Набережная Эльбы
-    addNodeMarker(37.6173, 55.7558); // Сектор Карлова
+        // Клеим маркеры на карту
+        nodeMatrix.forEach(function(item) {
+            var placemark = new ymaps.Placemark(item.coords, {
+                balloonContentHeader: item.name,
+                balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
+            }, {
+                preset: 'islands#darkOrangeDotIcon' // Перекрашиваем точки под новый билд
+            });
+            myMap.geoObjects.add(placemark);
+        });
+    });
 </script>
 
 </body>
