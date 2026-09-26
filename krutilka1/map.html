@@ -9,7 +9,7 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
         
-        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (из стабильного билда v4.0.2) */
         #map { 
             width: 100vw; 
             height: 100vh; 
@@ -25,7 +25,7 @@
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; /* Сигнальный зеленый */
+            color: #00ff66; /* Зеленый маркер финальной зачистки */
             padding: 6px 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
@@ -40,32 +40,35 @@
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_HYBRID v4.0.6</div>
+<div id="version-tag">SYSTEM // INTERFACE_HYBRID v4.0.7</div>
 <div id="map"></div>
 
 <script type="text/javascript">
-    // 🔍 1. БРОНИРОВАННЫЙ ДЕШИФРАТОР ХВОСТА ССЫЛКИ
-    var urlParams = new URLSearchParams(window.location.search);
-    var rawData = urlParams.get('data') || '';
-
+    // 🔍 1. ЖЕЛЕЗОБЕТОННЫЙ ДЕШИФРАТОР (Защищен от null и пустых строк)
     function getDensity(nodeLetter) {
-        // Жесткая проверка: если строка пустая — сразу выдаем пустую метку без расчетов
-        if (!rawData || rawData.length === 0) return '0 (ПУСТО)';
-        
-        var idx = rawData.indexOf(nodeLetter);
-        if (idx === -1) return '0 (ПУСТО)';
-        
-        // Безопасно забираем следующий символ
-        var charAtNext = rawData.charAt(idx + 1);
-        if (!charAtNext) return '0 (ПУСТО)';
-        
-        var num = parseInt(charAtNext, 10);
-        if (isNaN(num)) return '0 (ПУСТО)';
-        
-        return num > 0 ? '<b>' + num + ' контуров</b>' : '0 (ПУСТО)';
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var data = params.get('data');
+            
+            // Если параметра data вообще нет в ссылке — сразу выдаем ноль без расчетов
+            if (!data) return '0 (ПУСТО)';
+            
+            var idx = data.indexOf(nodeLetter);
+            if (idx === -1) return '0 (ПУСТО)';
+            
+            var charAtNext = data.charAt(idx + 1);
+            if (!charAtNext) return '0 (ПУСТО)';
+            
+            var num = parseInt(charAtNext, 10);
+            if (isNaN(num)) return '0 (ПУСТО)';
+            
+            return num > 0 ? '<b>' + num + ' контуров</b>' : '0 (ПУСТО)';
+        } catch (e) {
+            return '0 (ПУСТО)'; // В любой непонятной ситуации возвращаем стандартный ноль
+        }
     }
 
-    // 2. Стабильный запуск Яндекс Карт
+    // 2. Стабильный запуск Яндекс Карт (Один в один как в v4.0.2)
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
             center: [55.0, 50.0], // Центрируем на РФ
@@ -91,7 +94,7 @@
                 balloonContentHeader: item.name,
                 balloonContentBody: '<div style="font-family: monospace; font-size: 12px;">Плотность контуров: ' + currentDensity + '</div>'
             }, {
-                preset: 'islands#darkOrangeDotIcon' // Стабильные оранжевые точки
+                preset: 'islands#darkOrangeDotIcon' // Те самые стабильные оранжевые точки
             });
             myMap.geoObjects.add(placemark);
         });
