@@ -1,4 +1,4 @@
-html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -31,10 +31,10 @@ html<!DOCTYPE html>
 <script>
     // 1. Координатная сетка Происшествий мета-романа (6 базовых Нод)
     const nodeMatrix = {
-        'Е1': { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855], desc: 'Линейный экшен, полярный транзит.' },
+        'Е1': { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855], desc: 'Линейный экшен, полярный transit.' },
         'Б1': { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373], desc: 'Билингвальный сдвиг, демонтаж Стелы.' },
         'Г1': { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173], desc: 'Философия фашин, дворовые формулы.' },
-        'А1': { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351], desc: 'Матрёшка восприятия, оперативники.' },
+        'А1': { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351], desc: 'Метрёшка восприятия, оперативники.' },
         'В1': { name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050], desc: 'Рекурсивные каламбуры Моргунова.' },
         'Д1': { name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686], desc: 'Параллельное зрение, взлом зрительной коры.' }
     };
@@ -51,20 +51,20 @@ html<!DOCTYPE html>
     }).addTo(map);
 
     // 3. ПАРТИЗАНСКИЙ ДЕШИФРАТОР СТРОКИ {{AREHERE}}
-    // Забираем данные из ссылки (URL-параметр ?data=...)
     const urlParams = new URLSearchParams(window.location.search);
     const rawData = urlParams.get('data') || '';
 
     // Функция вычисления плотности читателей в Ноде
     function extractNodeDensity(nodeCode) {
         if (!rawData) return 0;
-        // Строим регулярку под твой текстовый регистр (находит "Г1_" и все идущие за ним ID)
+        
         const regex = new RegExp(nodeCode + '_(?:_\\d{20})*', 'g');
         const match = rawData.match(regex);
         if (!match) return 0;
         
-        // Отсекаем префикс Ноды и делим чистую длину оставшегося ID-хвоста на 21 символ
-        const cleanTail = match[0].replace(nodeCode + '_', '');
+        // Извлекаем первое совпадение из массива как чистую строку и убираем префикс комнаты
+        const matchedString = match[0];
+        const cleanTail = matchedString.replace(nodeCode + '_', '');
         return Math.floor(cleanTail.length / 21);
     }
 
