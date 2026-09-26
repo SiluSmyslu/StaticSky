@@ -8,11 +8,31 @@
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; }
-        #map { width: 100%; height: 100%; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; font-family: monospace; }
+        #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ КОММИТА */
+        #version-tag {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(13, 17, 23, 0.9);
+            color: #2ea043;
+            padding: 6px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000; /* Поверх карты */
+            box-shadow: 0 0 10px rgba(0,255,100,0.2);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+
+<!-- Маркер версии всегда горит на экране -->
+<div id="version-tag">SYSTEM // BUILD v2.0.4</div>
 
 <div id="map"></div>
 
@@ -20,10 +40,10 @@
     // Создаем карту и центрируем на России
     var map = L.map('map', { zoomControl: false }).setView([55.0, 50.0], 4);
 
-    // 🇷🇺 ИМПОРТОЗАМЕЩЕННЫЙ СЛОЙ ТАЙЛОВ: подтягиваем карту из независимого источника
-    L.tileLayer('https://yandex.net{x}&y={y}&z={z}&scale=1', {
+    // 🇷🇺 РОССИЙСКИЙ СЕРВЕР ТАЙЛОВ: подтягиваем карту из независимого источника РФ
+    L.tileLayer('https://sputnik.ru{z}/{x}/{y}.png', {
         maxZoom: 18,
-        attribution: '© Yandex'
+        attribution: '© Sputnik'
     }).addTo(map);
 
     // Ставим три железных тестовых маркера
