@@ -4,84 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
-    
-    <!-- 🛰️ ДИНАМИЧЕСКИЕ ТЕГИ OPEN GRAPH ДЛЯ ЖИВОГО ПРЕВЬЮ В ТЕЛЕГРАМ -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="EBAVGD // ТАКТИЧЕСКИЙ РАДАР">
-    <meta property="og:description" content="Интерфейс Экзокортекса. Плотность когнитивных контуров в реальном времени.">
-    
-    <script type="text/javascript">
-        // 🔍 БЫСТРЫЙ ПЕРЕХВАТ ДАННЫХ ДО ЗАГРУЗКИ КАРТЫ ДЛЯ СБОРКИ ПРЕВЬЮ
-        var currentSearch = window.location.search || '';
-        
-        function getDensityNum(letter) {
-            var idx = currentSearch.indexOf(letter);
-            if (idx === -1) return 0;
-            var num = parseInt(currentSearch.charAt(idx + 1), 10);
-            return isNaN(num) ? 0 : num;
-        }
-
-        var eNum = getDensityNum('E');
-        var bNum = getDensityNum('B');
-        var gNum = getDensityNum('G');
-
-        // Строим динамический URL для статической картинки Яндекса (рисует кружки прямо в превью ТГ!)
-        // Обозначения меток: pm2orgm~ - оранжевый кружок, pm2grm~ - серый кружок
-        var eMarker = "37.2855,55.3544," + (eNum > 0 ? "pm2orgm" + eNum : "pm2grm");
-        var bMarker = "13.7373,51.0504," + (bNum > 0 ? "pm2orgm" + bNum : "pm2grm");
-        var gMarker = "37.6173,55.7558," + (gNum > 0 ? "pm2orgm" + gNum : "pm2grm");
-
-        var staticMapUrl = "https://yandex.ru" + eMarker + "~" + bMarker + "~" + gMarker;
-
-        // Создаем тег og:image на лету
-        var meta = document.createElement('meta');
-        meta.disabled = false;
-        meta.contentType = 'text/html';
-        meta.setAttribute('property', 'og:image');
-        meta.setAttribute('content', staticMapUrl);
-        document.getElementsByTagName('head')[0].appendChild(meta);
-    </script>
-
-    <!-- Официальный API Яндекс Карт -->
+    <!-- Официальный и независимый API Яндекс Карт -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
-        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
         #version-tag {
-            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
-            color: #ffaa00; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
-            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
-            box-shadow: 0 0 10px rgba(255,170,0,0.3); pointer-events: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(13, 17, 23, 0.95);
+            color: #ffaa00; 
+            padding: 6px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(255,170,0,0.3);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_PREVIEW v4.3.0</div>
+<div id="version-tag">SYSTEM // INTERFACE_RADAR v4.4.0</div>
 <div id="map"></div>
 
 <script type="text/javascript">
+    // Проверяем, загрузился ли Яндекс, и запускаем инициализацию
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
-            center: [55.0, 50.0], 
-            zoom: 4,
+            center: [55.0, 50.0], // Центрируем на РФ
+            zoom: 3, // Немного отдаляем зум, чтобы масштабный круг влез в экран полностью
             controls: ['zoomControl']
         });
 
+        // Сетка базовых точек твоего Лабиринта
         var nodeMatrix = [
             { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
             { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
             { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] }
         ];
 
+        // Забираем сырую строку параметров из URL
+        var currentSearch = window.location.search || '';
+
+        // Клеим маркеры на карту
         nodeMatrix.forEach(function(item) {
-            var densityNum = getDensityNum(item.code);
-            var nodeColor = '#8b949e';  
+            
+            var densityNum = 0; // По умолчанию ноль людей
+            var letterPosition = currentSearch.indexOf(item.code);
+            
+            if (letterPosition !== -1) {
+                var nextChar = currentSearch.charAt(letterPosition + 1);
+                var parsedNum = parseInt(nextChar, 10);
+                if (!isNaN(parsedNum)) {
+                    densityNum = parsedNum;
+                }
+            }
+
+            // НАСТРОЙКА ЦВЕТА И ТЕКСТА РАДАРНЫХ КРУГОВ
+            var nodeColor = '#8b949e';  // Серый для пустых
             var markerCaption = '';     
             var densityText = '0 (ПУСТО)';
 
             if (densityNum > 0) {
-                nodeColor = '#ffaa00';  
+                nodeColor = '#ffaa00';  // Твой стабильный оранжевый цвет
                 markerCaption = String(densityNum); 
                 densityText = '<b>' + densityNum + ' контуров</b>';
             }
@@ -97,6 +98,27 @@
             
             myMap.geoObjects.add(placemark);
         });
+
+        // ⭕ 3. ДОБАВЛЕНИЕ ГЕОДЕЗИЧЕСКОГО КРУГА ПОКРЫТИЯ (3125 км)
+        // Центр — Москва [55.7558, 37.6173], Радиус — 3 125 000 метров
+        var coverageCircle = new ymaps.Circle([
+            [55.7558, 37.6173], 
+            3125000
+        ], {
+            // Текст всплывающей подсказки при клике на зону покрытия
+            balloonContentHeader: "ЗОНА СУГГЕСТИВНОГО ИЗЛУЧЕНИЯ",
+            balloonContentBody: "<div style='font-family: monospace; font-size: 12px;'>Радиус действия Накопительного Терминала: 3125 км.</div>"
+        }, {
+            // Настройка стилей в тон твоего радара
+            fillColor: "rgba(255, 170, 0, 0.08)", // Полупрозрачная оранжевая заливка (8% видимости)
+            strokeColor: "#ffaa00",               // Оранжевая граница круга
+            strokeOpacity: 0.5,                   // Полупрозрачность границы (50%)
+            strokeWidth: 2,                       // Толщина линии границы в пикселях
+            strokeStyle: 'shortdash'               // Пунктирная тактическая линия!
+        });
+
+        // Накладываем круг поверх карты
+        myMap.geoObjects.add(coverageCircle);
     });
 </script>
 
