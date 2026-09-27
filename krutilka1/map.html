@@ -7,7 +7,7 @@
     <!-- Официальный и независимый API Яндекс Карт -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
         
         /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (из стабильного билда v4.0.2) */
         #map { 
@@ -19,56 +19,57 @@
             z-index: 1; 
         }
         
-        /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
-        #version-tag {
+        /* 🎛️ ИЗОЛИРОВАННЫЙ ДИАГНОСТИЧЕСКИЙ БЛОК ПОВЕРХ КАРТЫ */
+        #debug-panel {
             position: absolute;
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; /* Зеленый маркер финальной зачистки */
-            padding: 6px 12px;
+            color: #ffaa00; /* Оранжевый текст дебага */
+            padding: 10px 15px;
             border: 1px solid #30363d;
             border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.3);
-            pointer-events: none;
+            z-index: 1000; /* Поверх карты */
+            box-shadow: 0 0 15px rgba(255,170,0,0.2);
+            max-width: 80vw;
+            word-break: break-all;
         }
+        .status-line { color: #8b949e; margin-bottom: 6px; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_HYBRID v4.0.7</div>
+<!-- Диагностическая панель, которая покажет сырые данные -->
+<div id="debug-panel">
+    <div class="status-line">SYSTEM // DEBUG_LAYER v4.0.9</div>
+    <div>ПЕРЕХВАЧЕННЫЕ ДАННЫЕ:</div>
+    <div id="raw-output" style="color: #00ff66; margin-top: 4px;">ОЖИДАНИЕ ПРОВЕРКИ...</div>
+</div>
+
 <div id="map"></div>
 
 <script type="text/javascript">
-    // 🔍 1. ЖЕЛЕЗОБЕТОННЫЙ ДЕШИФРАТОР (Защищен от null и пустых строк)
-    function getDensity(nodeLetter) {
-        try {
-            var params = new URLSearchParams(window.location.search);
-            var data = params.get('data');
-            
-            // Если параметра data вообще нет в ссылке — сразу выдаем ноль без расчетов
-            if (!data) return '0 (ПУСТО)';
-            
-            var idx = data.indexOf(nodeLetter);
-            if (idx === -1) return '0 (ПУСТО)';
-            
-            var charAtNext = data.charAt(idx + 1);
-            if (!charAtNext) return '0 (ПУСТО)';
-            
-            var num = parseInt(charAtNext, 10);
-            if (isNaN(num)) return '0 (ПУСТО)';
-            
-            return num > 0 ? '<b>' + num + ' контуров</b>' : '0 (ПУСТО)';
-        } catch (e) {
-            return '0 (ПУСТО)'; // В любой непонятной ситуации возвращаем стандартный ноль
+    // 🔍 ПОСТУПАТЕЛЬНАЯ ПРОВЕРКА: вытаскиваем данные и пишем в текстовый блок, не трогая карту
+    var urlParams = new URLSearchParams(window.location.search);
+    var rawData = urlParams.get('data');
+    
+    // Ждем, пока страница построит HTML-скелет, и пишем текст
+    window.addEventListener('DOMContentLoaded', function() {
+        var outputDiv = document.getElementById('raw-output');
+        if (rawData === null) {
+            outputDiv.innerHTML = "ОШИБКА: Параметр 'data' отсутствует в URL.";
+            outputDiv.style.color = "#ff7b72";
+        } else if (rawData === "") {
+            outputDiv.innerHTML = "Параметр 'data' пустой (?data=).";
+            outputDiv.style.color = "#ff7b72";
+        } else {
+            outputDiv.innerHTML = rawData; // Выводим сырой хвост как есть
         }
-    }
+    });
 
-    // 2. Стабильный запуск Яндекс Карт (Один в один как в v4.0.2)
+    // 2. Стабильный запуск Яндекс Карт (Один в один как в рабочем v4.0.2)
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
             center: [55.0, 50.0], // Центрируем на РФ
@@ -78,23 +79,21 @@
 
         // Железобетонная сетка базовых точек твоего Лабиринта
         var nodeMatrix = [
-            { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
-            { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
-            { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
-            { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
-            { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
-            { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+            { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
+            { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
+            { name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
+            { name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
         ];
 
-        // Клеим маркеры на карту
+        // Клеим маркеры на карту (Тело Яндекса полностью статично, как ты и просил)
         nodeMatrix.forEach(function(item) {
-            var currentDensity = getDensity(item.code);
-
             var placemark = new ymaps.Placemark(item.coords, {
                 balloonContentHeader: item.name,
-                balloonContentBody: '<div style="font-family: monospace; font-size: 12px;">Плотность контуров: ' + currentDensity + '</div>'
+                balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
             }, {
-                preset: 'islands#darkOrangeDotIcon' // Те самые стабильные оранжевые точки
+                preset: 'islands#darkOrangeDotIcon'
             });
             myMap.geoObjects.add(placemark);
         });
