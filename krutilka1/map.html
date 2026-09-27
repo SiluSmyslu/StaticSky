@@ -4,106 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
-    <!-- Официальный и независимый API Яндекс Карт -->
+    <!-- Оригинальное подключение Яндекс Карт без лишних ключей -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
-        #map { 
-            width: 100vw; 
-            height: 100vh; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            z-index: 1; 
-        }
-        
-        /* 🎛️ ТАКТИЧЕСКИЙ ДИАГНОСТИЧЕСКИЙ БЛОК */
         #version-tag {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(13, 17, 23, 0.95);
-            color: #ffaa00;
-            padding: 12px;
-            border: 1px solid #30363d;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 0 10px rgba(255,170,0,0.2);
-            pointer-events: none;
-            line-height: 1.6;
+            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
+            color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
+            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-<!-- Диагностическая плашка -->
-<div id="version-tag">
-    SYSTEM // DEBUG_LAYER v4.1.2<br>
-    <span style="color: #ffaa00;">ПЕРЕХВАЧЕННЫЕ ДАННЫЕ:</span><br>
-    <span id="debug-data" style="color: #00ff66;">ОЖИДАНИЕ ЗАГРУЗКИ СТРАНИЦЫ...</span><br>
-    <span style="color: #ffaa00;">ТЕСТ ПАРСЕРА ДЛЯ НОДЫ Е:</span><br>
-    <span id="debug-parser" style="color: #388bfd;">ОЖИДАНИЕ ЗАГРУЗКИ СТРАНИЦЫ...</span>
-</div>
-
-<!-- Контейнер карты -->
+<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.1.5</div>
 <div id="map"></div>
 
 <script type="text/javascript">
-    // Функция вычисления плотности читателей в Ноде (вынесена наружу, так как она не трогает DOM)
-    function extractNodeDensity(rawDataString, nodeLetter) {
-        if (!rawDataString) return 0;
-        var idx = rawDataString.indexOf(nodeLetter);
-        if (idx === -1) return 0;
-        
-        var num = parseInt(rawDataString.charAt(idx + 1), 10);
-        return isNaN(num) ? 0 : num;
-    }
+    // Девственно чистый запуск Яндекса, один в один как в рабочем v4.0.2
+    ymaps.ready(function () {
+        var myMap = new ymaps.Map("map", {
+            center: [55.0, 50.0], 
+            zoom: 4,
+            controls: ['zoomControl']
+        });
 
-    // 🎯 ГАРАНТИРОВАННЫЙ ЗАПУСК ПОСЛЕ ПОЛНОЙ ОТРИСОВКИ СТРАНИЦЫ
-    document.addEventListener("DOMContentLoaded", function() {
-        // 1. Перехватываем параметры из URL
-        var urlParams = new URLSearchParams(window.location.search);
-        var rawData = urlParams.get('data') || '';
-        
-        // 2. Выводим сырые данные в плашку (теперь элементы debug-data точно существуют!)
-        document.getElementById('debug-data').innerHTML = rawData ? rawData : "null / пустая строка";
+        // Железобетонная сетка базовых точек
+        var nodeMatrix = [
+            { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
+            { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
+            { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
+            { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+        ];
 
-        // 3. Тестируем работу парсера на экране
-        var testDensity = extractNodeDensity(rawData, 'E');
-        document.getElementById('debug-parser').innerHTML = "Найдено контуров: " + testDensity;
+        // Читаем сырую строку из URL прямо на месте
+        var searchString = window.location.search || '';
 
-        // 4. Запускаем карту Яндекса
-        ymaps.ready(function () {
-            var myMap = new ymaps.Map("map", {
-                center: [55.0, 50.0], // Центрируем на РФ
-                zoom: 4,
-                controls: ['zoomControl']
+        nodeMatrix.forEach(function(item) {
+            // Щадящий парсинг: ищем букву Ноды в строке и забираем следующую за ней цифру
+            var densityText = '0 (ПУСТО)';
+            var idx = searchString.indexOf(item.code);
+            
+            if (idx !== -1) {
+                var num = parseInt(searchString.charAt(idx + 1), 10);
+                if (!isNaN(num) && num > 0) {
+                    densityText = '<b>' + num + ' контуров</b>';
+                }
+            }
+
+            // Подставляем значение в баллон оригинального маркера Яндекса
+            var placemark = new ymaps.Placemark(item.coords, {
+                balloonContentHeader: item.name,
+                balloonContentBody: '<div style="font-family: monospace; font-size: 12px;">Плотность контуров: ' + densityText + '</div>'
+            }, {
+                preset: 'islands#darkOrangeDotIcon'
             });
-
-            // Географическая матрица Нод
-            var nodeMatrix = [
-                { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
-                { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
-                { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
-                { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
-                { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
-                { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
-            ];
-
-            // Расставляем оранжевые маркеры в статичном режиме
-            nodeMatrix.forEach(function(item) {
-                var placemark = new ymaps.Placemark(item.coords, {
-                    balloonContentHeader: item.name,
-                    balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
-                }, {
-                    preset: 'islands#darkOrangeDotIcon'
-                });
-                myMap.geoObjects.add(placemark);
-            });
+            
+            myMap.geoObjects.add(placemark);
         });
     });
 </script>
