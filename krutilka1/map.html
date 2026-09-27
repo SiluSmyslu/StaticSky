@@ -9,7 +9,7 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
         
-        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (из стабильного билда v4.0.2) */
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
         #map { 
             width: 100vw; 
             height: 100vh; 
@@ -19,57 +19,51 @@
             z-index: 1; 
         }
         
-        /* 🎛️ ИЗОЛИРОВАННЫЙ ДИАГНОСТИЧЕСКИЙ БЛОК ПОВЕРХ КАРТЫ */
-        #debug-panel {
+        /* 🎛️ ТАКТИЧЕСКИЙ ДИАГНОСТИЧЕСКИЙ БЛОК (как на твоем скриншоте) */
+        #version-tag {
             position: absolute;
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #ffaa00; /* Оранжевый текст дебага */
-            padding: 10px 15px;
+            color: #ffaa00;
+            padding: 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
-            z-index: 1000; /* Поверх карты */
-            box-shadow: 0 0 15px rgba(255,170,0,0.2);
-            max-width: 80vw;
-            word-break: break-all;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(255,170,0,0.2);
+            pointer-events: none;
+            line-height: 1.5;
         }
-        .status-line { color: #8b949e; margin-bottom: 6px; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<!-- Диагностическая панель, которая покажет сырые данные -->
-<div id="debug-panel">
-    <div class="status-line">SYSTEM // DEBUG_LAYER v4.0.9</div>
-    <div>ПЕРЕХВАЧЕННЫЕ ДАННЫЕ:</div>
-    <div id="raw-output" style="color: #00ff66; margin-top: 4px;">ОЖИДАНИЕ ПРОВЕРКИ...</div>
+<!-- Диагностическая плашка -->
+<div id="version-tag">
+    SYSTEM // DEBUG_LAYER v4.1.0<br>
+    <span style="color: #ffaa00;">ПЕРЕХВАЧЕННЫЕ ДАННЫЕ:</span><br>
+    <span id="debug-data" style="color: #00ff66;">ОЖИДАНИЕ...</span>
 </div>
 
+<!-- Контейнер карты -->
 <div id="map"></div>
 
 <script type="text/javascript">
-    // 🔍 ПОСТУПАТЕЛЬНАЯ ПРОВЕРКА: вытаскиваем данные и пишем в текстовый блок, не трогая карту
+    // 1. ПЕРЕХВАТ ДАННЫХ ИЗ URL И ВЫВОД В ПЛАШКУ
     var urlParams = new URLSearchParams(window.location.search);
-    var rawData = urlParams.get('data');
+    var rawData = urlParams.get('data') || '';
+    var debugDataSpan = document.getElementById('debug-data');
     
-    // Ждем, пока страница построит HTML-скелет, и пишем текст
-    window.addEventListener('DOMContentLoaded', function() {
-        var outputDiv = document.getElementById('raw-output');
-        if (rawData === null) {
-            outputDiv.innerHTML = "ОШИБКА: Параметр 'data' отсутствует в URL.";
-            outputDiv.style.color = "#ff7b72";
-        } else if (rawData === "") {
-            outputDiv.innerHTML = "Параметр 'data' пустой (?data=).";
-            outputDiv.style.color = "#ff7b72";
-        } else {
-            outputDiv.innerHTML = rawData; // Выводим сырой хвост как есть
-        }
-    });
+    if (rawData) {
+        debugDataSpan.innerHTML = rawData;
+    } else {
+        debugDataSpan.innerHTML = "null / пустая строка";
+        debugDataSpan.style.color = "#ff7b72";
+    }
 
-    // 2. Стабильный запуск Яндекс Карт (Один в один как в рабочем v4.0.2)
+    // 2. Стабильный запуск Яндекс Карт
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
             center: [55.0, 50.0], // Центрируем на РФ
@@ -77,23 +71,23 @@
             controls: ['zoomControl']
         });
 
-        // Железобетонная сетка базовых точек твоего Лабиринта
+        // Исправленная координатная сетка без опечаток в структуре объектов
         var nodeMatrix = [
-            { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
-            { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
-            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
-            { name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
-            { name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
-            { name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+            { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
+            { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
+            { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
+            { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
         ];
 
-        // Клеим маркеры на карту (Тело Яндекса полностью статично, как ты и просил)
+        // Клеим маркеры на карту
         nodeMatrix.forEach(function(item) {
             var placemark = new ymaps.Placemark(item.coords, {
                 balloonContentHeader: item.name,
                 balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
             }, {
-                preset: 'islands#darkOrangeDotIcon'
+                preset: 'islands#darkOrangeDotIcon' // Стабильные оранжевые метки
             });
             myMap.geoObjects.add(placemark);
         });
