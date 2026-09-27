@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
     <!-- Официальный и независимый API Яндекс Карт -->
-    <script src="https://yandex.ru" type="text/javascript"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
         
-        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН (не даст ей схлопнуться в 0 пикселей) */
         #map { 
             width: 100vw; 
             height: 100vh; 
@@ -25,7 +25,7 @@
             top: 10px;
             left: 10px;
             background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; /* Сигнальный зеленый цвет победного билда */
+            color: #ffaa00; /* Ярко-оранжевый цвет для новой эпохи тестов */
             padding: 6px 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
@@ -33,18 +33,18 @@
             font-size: 12px;
             font-weight: bold;
             z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.3);
+            box-shadow: 0 0 10px rgba(255,170,0,0.3);
             pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.1.6</div>
+<div id="version-tag">SYSTEM // INTERFACE_FIXED v4.0.1</div>
 <div id="map"></div>
 
 <script type="text/javascript">
-    // Запуск оригинального Яндекса
+    // Проверяем, загрузился ли Яндекс, и запускаем инициализацию
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
             center: [55.0, 50.0], // Центрируем на РФ
@@ -52,41 +52,21 @@
             controls: ['zoomControl']
         });
 
-        // Железобетонная сетка базовых точек с ВЫРОВНЕННОЙ структурой объектов
+        // Сетка базовых точек твоего Лабиринта
         var nodeMatrix = [
-            { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
-            { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
-            { code: 'G', name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] },
-            { code: 'A', name: 'НОДА А // Фаза БДГ-Сна', coords: [59.9343, 30.3351] },
-            { code: 'V', name: 'НОДА В // Озеро Света', coords: [52.5200, 13.4050] },
-            { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
+            { name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
+            { name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
+            { name: 'НОДА Г // Сектор Карлова', coords: [55.7558, 37.6173] }
         ];
-
-        // Перехватываем строку параметров из URL один раз на старте
-        var searchString = window.location.search || '';
 
         // Клеим маркеры на карту
         nodeMatrix.forEach(function(item) {
-            var densityText = '0 (ПУСТО)';
-
-            // Если в строке URL вообще есть данные и у точки есть корректный код
-            if (searchString && item.code) {
-                var idx = searchString.indexOf(item.code);
-                if (idx !== -1) {
-                    var num = parseInt(searchString.charAt(idx + 1), 10);
-                    if (!isNaN(num) && num > 0) {
-                        densityText = '<b>' + num + ' контуров</b>';
-                    }
-                }
-            }
-
             var placemark = new ymaps.Placemark(item.coords, {
                 balloonContentHeader: item.name,
-                balloonContentBody: '<div style="font-family: monospace; font-size: 12px;">Плотность контуров: ' + densityText + '</div>'
+                balloonContentBody: 'Плотность контуров: 0 (ПУСТО)'
             }, {
-                preset: 'islands#darkOrangeDotIcon' // Те самые стабильные оранжевые точки
+                preset: 'islands#darkOrangeDotIcon' // Перекрашиваем точки под новый билд
             });
-            
             myMap.geoObjects.add(placemark);
         });
     });
