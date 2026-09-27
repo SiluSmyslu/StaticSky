@@ -4,34 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
-    <!-- Оригинальное подключение Яндекс Карт без лишних ключей -->
+    <!-- Официальный и независимый API Яндекс Карт -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
-        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         
+        /* 🗺️ ЖЕСТКО ФИКСИРУЕМ КАРТУ НА ВЕСЬ ЭКРАН */
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* 🎛️ ТАКТИЧЕСКИЙ МАРКЕР ВЕРСИИ */
         #version-tag {
-            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
-            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(13, 17, 23, 0.95);
+            color: #00ff66; /* Сигнальный зеленый цвет победного билда */
+            padding: 6px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,255,102,0.3);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.1.5</div>
+<div id="version-tag">SYSTEM // INTERFACE_STABLE v4.1.6</div>
 <div id="map"></div>
 
 <script type="text/javascript">
-    // Девственно чистый запуск Яндекса, один в один как в рабочем v4.0.2
+    // Запуск оригинального Яндекса
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
-            center: [55.0, 50.0], 
+            center: [55.0, 50.0], // Центрируем на РФ
             zoom: 4,
             controls: ['zoomControl']
         });
 
-        // Железобетонная сетка базовых точек
+        // Железобетонная сетка базовых точек с ВЫРОВНЕННОЙ структурой объектов
         var nodeMatrix = [
             { code: 'E', name: 'НОДА Е // Аэродром Троицк', coords: [55.3544, 37.2855] },
             { code: 'B', name: 'НОДА Б // Набережная Эльбы', coords: [51.0504, 13.7373] },
@@ -41,27 +62,29 @@
             { code: 'D', name: 'НОДА Д // Суггестивная Погоня', coords: [54.9924, 73.3686] }
         ];
 
-        // Читаем сырую строку из URL прямо на месте
+        // Перехватываем строку параметров из URL один раз на старте
         var searchString = window.location.search || '';
 
+        // Клеим маркеры на карту
         nodeMatrix.forEach(function(item) {
-            // Щадящий парсинг: ищем букву Ноды в строке и забираем следующую за ней цифру
             var densityText = '0 (ПУСТО)';
-            var idx = searchString.indexOf(item.code);
-            
-            if (idx !== -1) {
-                var num = parseInt(searchString.charAt(idx + 1), 10);
-                if (!isNaN(num) && num > 0) {
-                    densityText = '<b>' + num + ' контуров</b>';
+
+            // Если в строке URL вообще есть данные и у точки есть корректный код
+            if (searchString && item.code) {
+                var idx = searchString.indexOf(item.code);
+                if (idx !== -1) {
+                    var num = parseInt(searchString.charAt(idx + 1), 10);
+                    if (!isNaN(num) && num > 0) {
+                        densityText = '<b>' + num + ' контуров</b>';
+                    }
                 }
             }
 
-            // Подставляем значение в баллон оригинального маркера Яндекса
             var placemark = new ymaps.Placemark(item.coords, {
                 balloonContentHeader: item.name,
                 balloonContentBody: '<div style="font-family: monospace; font-size: 12px;">Плотность контуров: ' + densityText + '</div>'
             }, {
-                preset: 'islands#darkOrangeDotIcon'
+                preset: 'islands#darkOrangeDotIcon' // Те самые стабильные оранжевые точки
             });
             
             myMap.geoObjects.add(placemark);
