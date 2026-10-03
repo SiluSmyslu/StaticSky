@@ -18,7 +18,7 @@
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // EXTERNAL_JSON v5.3.0</div>
+<div id="version-tag">SYSTEM // EXTERNAL_JSON v5.3.1_HOTFIX</div>
 <div id="map"></div>
 
 <script type="text/javascript">
@@ -44,7 +44,7 @@
     }
 
     ymaps.ready(function () {
-        // 📡 ПОДТЯГИВАЕМ ГЕО-БАЗУ ИЗ ВНЕШНЕГО JSON-ФАЙЛА
+        // Подтягиваем гео-базу из внешнего JSON
         fetch('locations.json')
             .then(function(response) { return response.json(); })
             .then(function(locations) {
@@ -55,8 +55,9 @@
             });
 
         function renderQuantumMap(locations) {
+            // ЖЕСТКИЙ ПРЕВЕНТИВНЫЙ БАЗОВЫЙ ЦЕНТР (Защита от падения в черный экран!)
             var myMap = new ymaps.Map("map", {
-                center: [55.5, 38.0],
+                center: [55.5, 38.0], // По умолчанию Москва/Кратово
                 zoom: 11,
                 controls: ['zoomControl']
             });
@@ -83,6 +84,7 @@
                 }
             }
 
+            // Ищем локацию текущего пользователя
             var currentUserLocationId = null;
             var activeGroup = "moscow_orbit";
 
@@ -97,20 +99,20 @@
                 }
             }
 
-            var mapCenter = [55.5, 38.0];
-            var mapZoom = 11;
-
+            // Динамическая перецентровка камеры ТОЛЬКО если параметры пользователя прилетели
             if (currentUserLocationId && locations[currentUserLocationId]) {
-                mapCenter = locations[currentUserLocationId].coords;
+                var mapCenter = locations[currentUserLocationId].coords;
+                var mapZoom = 11;
+
+                if (activeGroup === "ural_orbit") mapZoom = 10;
+                else if (activeGroup === "europe") mapZoom = 7;
+                else if (activeGroup === "global_space") mapZoom = 2;
+                else mapZoom = 11;
+
+                myMap.setCenter(mapCenter, mapZoom);
             }
 
-            if (activeGroup === "ural_orbit") mapZoom = 10;
-            else if (activeGroup === "europe") mapZoom = 7;
-            else if (activeGroup === "global_space") mapZoom = 2;
-            else mapZoom = 11;
-
-            myMap.setCenter(mapCenter, mapZoom);
-
+            // Отрисовка всех локаций из JSON
             for (var locId in locations) {
                 if (locations.hasOwnProperty(locId)) {
                     var loc = locations[locId];
@@ -150,7 +152,6 @@
                     if (isUserHere) balloonBodyText += "<b style='color:#00ff66;'>[ СИГНАЛ ВАШЕГО ЭКЗОКОРТЕКСА ЗАФИКСИРОВАН ЗДЕСЬ ]</b><br><br>";
                     balloonBodyText += "<b>Контуры активности секторов:</b><br>" + (balloonLegendHtml || "• Статичный узел Лабиринта") + "</div>";
 
-                    // 🔮 УМНЫЙ ЗАГОЛОВОК: Если имя в JSON пустое "", выводим "Локация #[ID]"
                     var finalDisplayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
 
                     var placemark = new ymaps.Placemark(loc.coords, {
