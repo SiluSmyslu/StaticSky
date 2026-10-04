@@ -45,7 +45,8 @@
                     var loc = locations[locId];
                     var totalLocationPeople = 0;
                     var balloonLegendHtml = "";
-                    if (loc.quants && loc.quants.length > 0) { loc.quants.forEach(function(qCode) { var count = quantsDensity[qCode] || 0; totalLocationPeople += count; var loraName = getLoraQuantName(qCode); if (count > 0) { balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#0088ff;'>" + count + " конт.</span><br>"; } else { balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>"; } }); }
+                    if (loc.quants && loc.quants.length > 0) { loc.quants.forEach(function(qCode) { var count = (typeof quantsDensity !== "undefined" && quantsDensity[qCode]) ? quantsDensity[qCode] : 0; totalLocationPeople += count; var loraName = getLoraQuantName(qCode); if (count > 0) { balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#0088ff;'>" + count + " конт.</span><br>"; } else { balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>"; } });
+loc.quants.forEach(function(qCode) { var count = quantsDensity[qCode] || 0; totalLocationPeople += count; var loraName = getLoraQuantName(qCode); if (count > 0) { balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#0088ff;'>" + count + " конт.</span><br>"; } else { balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>"; } }); }
                     var isUserHere = (locId === currentUserLocationId);
                     var markerPreset = 'islands#circleIcon';
                     var markerColor = '#8b949e';
