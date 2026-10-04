@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // КВАНТОВЫЙ МОНИТОР ЛАБИРИНТА</title>
-    
-    <!-- Скрипт Яндекса с автозапуском строго после загрузки API -->
-    <script src="https://yandex.ru" type="text/javascript"></script>
-    
+    <!-- Официальный и независимый API Яндекс Карт -->
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
@@ -21,13 +19,13 @@
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // MONOLITH_STABLE v5.5.1</div>
+<div id="version-tag">SYSTEM // MONOLITH_STABLE v5.5.5</div>
 <div id="map"></div>
 
 <script type="text/javascript">
     var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
 
-    // Декодер Base64 в десятичные числа
+    // Безопасный декодер Base64
     function decodeB64(chars) {
         if (!chars || chars.length !== 2) return 0;
         var idx1 = B64_ALPHABET.indexOf(chars.charAt(0));
@@ -35,20 +33,9 @@
         return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
     }
 
-    // Перевод системного кода в лор-название для легенды балуна
-    function getLoraQuantName(sysCode) {
-        if (!sysCode || sysCode.length !== 2) return sysCode;
-        var totalIndex = decodeB64(sysCode);
-        if (totalIndex >= 0 && totalIndex <= 59) return "Квант А" + totalIndex;
-        if (totalIndex >= 60 && totalIndex <= 91) return "Квант Б" + (totalIndex - 59);
-        if (totalIndex >= 92 && totalIndex <= 122) return "Квант В" + (totalIndex - 91);
-        if (totalIndex >= 123 && totalIndex <= 177) return "Квант Г" + (totalIndex - 122);
-        if (totalIndex >= 178 && totalIndex <= 190) return "Квант Д" + (totalIndex - 177);
-        if (totalIndex >= 191 && totalIndex <= 241) return "Квант Е" + (totalIndex - 190);
-        return sysCode;
-    }
-
-    function initQuantumRadar() {
+    // Инициализация карты по каноническому шаблону ready()
+    ymaps.ready(function () {
+        
         // --- 🗺️ ТЕСТОВАЯ МАТРИЦА: ТОЛЬКО 3 ПЕРВЫЕ ЛОКАЦИИ ДЛЯ ДЕБАГА ---
         var locations = {
             "1": { "name": "", "coords": [55.632947, 37.798636], "quants": ["00","02","03","0i","0j","0C","0D","0I"], "group": "moscow_orbit" },
@@ -62,11 +49,11 @@
         var currentUserQuant = "";
         var globalDataString = "";
 
-        // Разбираем строку данных, если она есть
+        // Разбираем префикс текущего положения и обходим маркер безопасности "ZZ"
         if (rawData.length >= 4 && rawData.substr(2, 2) === "ZZ") {
             currentUserQuant = rawData.substr(0, 2); // Код кванта пользователя
             globalDataString = rawData.substr(4);    // Шлейф плотности
-        } else if (rawData.length > 0 && rawData.substr(2, 2) !== "ZZ") {
+        } else if (rawData.length > 0) {
             globalDataString = rawData; 
         }
 
@@ -80,8 +67,8 @@
             }
         }
 
-        // Вычисляем центр и зум динамически ДО создания карты, как в твоем стабильном билде
-        var defaultCenter = [55.5, 38.0]; // По умолчанию Москва
+        // Вычисляем центр и зум динамически ДО создания объекта карты
+        var defaultCenter = [55.5, 38.0]; // По умолчанию Москва/Кратово
         var defaultZoom = 11;
 
         if (currentUserQuant !== "") {
@@ -100,7 +87,7 @@
             }
         }
 
-        // Создаем карту СРАЗУ с финальными координатами (Железная защита от падения Яндекса)
+        // Создаем карту строго с финальными координатами, как в твоем v4.4.0
         var myMap = new ymaps.Map("map", {
             center: defaultCenter,
             zoom: defaultZoom,
@@ -118,16 +105,16 @@
                     loc.quants.forEach(function(qCode) {
                         var count = quantsDensity[qCode] || 0;
                         totalLocationPeople += count;
-                        var loraName = getLoraQuantName(qCode);
+                        
                         if (count > 0) {
-                            balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#ffaa00;'>" + count + " конт.</span><br>";
+                            balloonLegendHtml += "• <b>Код " + qCode + ":</b> <span style='color:#ffaa00;'>" + count + " конт.</span><br>";
                         } else {
-                            balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>";
+                            balloonLegendHtml += "• Код " + qCode + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>";
                         }
                     });
                 }
 
-                // Проверяем, находится ли пользователь тут (строго защищаем от пустых строк)
+                // Проверяем, находится ли пользователь тут
                 var isUserHere = false;
                 if (currentUserQuant !== "" && loc.quants && loc.quants.indexOf(currentUserQuant) !== -1) {
                     isUserHere = true;
@@ -143,7 +130,7 @@
                 }
 
                 if (isUserHere) {
-                    markerPreset = 'islands#circleDotIcon'; // Мишень без жала ровно по центру!
+                    markerPreset = 'islands#circleDotIcon'; // Включаем тактическую мишень ровно по центру координатной точки
                     markerColor = '#00ff66';              // Сигнальный зеленый
                     if (totalLocationPeople === 0) markerCaption = "Я";
                 }
@@ -166,7 +153,7 @@
                 myMap.geoObjects.add(placemark);
             }
         }
-    }
+    });
 </script>
 
 </body>
