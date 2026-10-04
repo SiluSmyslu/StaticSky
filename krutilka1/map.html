@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // ТЕСТОВЫЙ СТЕНД И КАРТА</title>
     
-    <!-- Официальный API Яндекс Карт -->
+    <!-- Твоё ОРИГИНАЛЬНОЕ подключение скрипта Яндекса из v4.4.0 -->
     <script src="https://yandex.ru" type="text/javascript"></script>
     
     <style>
@@ -26,16 +26,16 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(13, 17, 23, 0.90); /* Сделали чуть прозрачнее, чтобы видеть карту */
+            background: rgba(13, 17, 23, 0.90);
             border: 1px solid #30363d; 
             padding: 15px; 
             border-radius: 6px; 
             box-shadow: 0 0 15px rgba(0,255,102,0.2); 
             width: 380px; 
-            z-index: 1000; /* Жестко держим поверх карты */
+            z-index: 1000;
             color: #8b949e;
             font-size: 12px;
-            pointer-events: auto; /* Чтобы таблица кликалась */
+            pointer-events: auto;
         }
         .green-text { color: #00ff66; font-weight: bold; }
         .orange-text { color: #ffaa00; font-weight: bold; }
@@ -46,9 +46,9 @@
 </head>
 <body>
 
-<!-- Наш проверенный диагностический блок поверх экрана -->
+<!-- Текстовый декодер поверх экрана -->
 <div class="diagnostic-box">
-    <h3 style="margin-top:0;">SYSTEM // RADAR_STAND v5.6.1</h3>
+    <h3 style="margin-top:0;">SYSTEM // RADAR_STAND v5.6.2</h3>
     <hr style="border: 1px solid #30363d; margin-bottom: 8px;">
     <p style="margin: 4px 0;">Сырая строка: <span id="raw-url" class="orange-text">ПУСТО</span></p>
     <p style="margin: 4px 0;">Текущий квант: <span id="user-quant" class="green-text">НЕ ОПРЕДЕЛЕН</span></p>
@@ -68,7 +68,7 @@
     </table>
 </div>
 
-<!-- Голый холст карты Яндекса на заднем плане -->
+<!-- Холст карты Яндекса -->
 <div id="map"></div>
 
 <script type="text/javascript">
@@ -81,7 +81,7 @@
         return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
     }
 
-    // ⚡ ШАГ А: СНАЧАЛА ЗАПУСКАЕМ НАШ СТОПРОЦЕНТНЫЙ ДЕКОДЕР ТЕКСТА
+    // СНАЧАЛА ОТРАБАТЫВАЕТ РАСКУСЫВАНИЕ СТРОКИ URL
     var urlParams = new URLSearchParams(window.location.search);
     var rawData = (urlParams.get('data') || '').trim();
 
@@ -111,14 +111,13 @@
         }
     }
 
-    // 🗺️ ШАГ Б: ОСТОРОЖНО ПОДКЛЮЧАЕМ ГОЛУЮ КАРТУ НА ЗАДНИЙ ПЛАН
+    // ИНИЦИАЛИЗАЦИЯ КАРТЫ СТРОГО В КОНЦЕ (Полная копия структуры твоей рабочей v4.4.0)
     ymaps.ready(function () {
         var myMap = new ymaps.Map("map", {
-            center: [55.5, 38.0], // По умолчанию Кратово / Москва
-            zoom: 9,
+            center: [55.5, 38.0], // Центрируем на Кратово / Москву по умолчанию
+            zoom: 4,              // Обзорный масштаб
             controls: ['zoomControl']
         });
-        // Больше ничего внутри ready не делаем! Никаких циклов, маркеров и условий.
     });
 </script>
 
