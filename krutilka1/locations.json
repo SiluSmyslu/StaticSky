@@ -39,7 +39,7 @@
   "38": { "name": "", "coords": [51.165191, 13.092767], "quants": ["12"], "group": "europe" },
   "39": { "name": "", "coords": [51.140943, 13.150713], "quants": ["13"], "group": "europe" },
   "40": { "name": "", "coords": [51.088050, 13.258384], "quants": ["14"], "group": "europe" },
-  "41": { "name": "", "coords": [51.036815, 13.296438], "quants": ["15","16"], group: "europe" },
+  "41": { "name": "", "coords": [51.036815, 13.296438], "quants": ["15","16"], "group: "europe" },
   "42": { "name": "", "coords": [51.018829, 13.252492], "quants": ["17"], "group": "europe" },
   "43": { "name": "", "coords": [50.955135, 13.069167], "quants": ["18"], "group": "europe" },
   "44": { "name": "", "coords": [50.497547, 11.795518], "quants": ["19"], "group": "europe" },
