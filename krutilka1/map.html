@@ -8,166 +8,75 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        #version-tag {
-            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
-            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.3); pointer-events: none;
-        }
+        #version-tag { position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95); color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000; box-shadow: 0 0 10px rgba(0,255,102,0.3); pointer-events: none; }
     </style>
 </head>
 <body>
-
-<div id="version-tag">SYSTEM // EXTERNAL_JSON v5.3.0</div>
+<div id="version-tag">SYSTEM // EXTERNAL_JSON v5.3.5_LAYERS</div>
 <div id="map"></div>
-
 <script type="text/javascript">
     var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
-
-    function decodeB64(chars) {
-        if (!chars || chars.length !== 2) return 0;
-        var idx1 = B64_ALPHABET.indexOf(chars.charAt(0));
-        var idx2 = B64_ALPHABET.indexOf(chars.charAt(1));
-        return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
-    }
-
-    function getLoraQuantName(sysCode) {
-        if (!sysCode || sysCode.length !== 2) return sysCode;
-        var totalIndex = decodeB64(sysCode);
-        if (totalIndex >= 0 && totalIndex <= 59) return "Квант А" + totalIndex;
-        if (totalIndex >= 60 && totalIndex <= 91) return "Квант Б" + (totalIndex - 59);
-        if (totalIndex >= 92 && totalIndex <= 122) return "Квант В" + (totalIndex - 91);
-        if (totalIndex >= 123 && totalIndex <= 177) return "Квант Г" + (totalIndex - 122);
-        if (totalIndex >= 178 && totalIndex <= 190) return "Квант Д" + (totalIndex - 177);
-        if (totalIndex >= 191 && totalIndex <= 241) return "Квант Е" + (totalIndex - 190);
-        return sysCode;
-    }
-
+    function decodeB64(chars) { if (!chars || chars.length !== 2) return 0; var idx1 = B64_ALPHABET.indexOf(chars.charAt(0)); var idx2 = B64_ALPHABET.indexOf(chars.charAt(1)); return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2; }
+    function getLoraQuantName(sysCode) { if (!sysCode || sysCode.length !== 2) return sysCode; var totalIndex = decodeB64(sysCode); if (totalIndex >= 0 && totalIndex <= 59) return "Квант А" + totalIndex; if (totalIndex >= 60 && totalIndex <= 91) return "Квант Б" + (totalIndex - 59); if (totalIndex >= 92 && totalIndex <= 122) return "Квант В" + (totalIndex - 91); if (totalIndex >= 123 && totalIndex <= 177) return "Квант Г" + (totalIndex - 122); if (totalIndex >= 178 && totalIndex <= 190) return "Квант Д" + (totalIndex - 177); if (totalIndex >= 191 && totalIndex <= 241) return "Квант Е" + (totalIndex - 190); return sysCode; }
     ymaps.ready(function () {
-        // 📡 ПОДТЯГИВАЕМ ГЕО-БАЗУ ИЗ ВНЕШНЕГО JSON-ФАЙЛА
         fetch('locations.json')
             .then(function(response) { return response.json(); })
-            .then(function(locations) {
-                renderQuantumMap(locations);
-            })
-            .catch(function(err) {
-                console.error("Ошибка загрузки внешней базы локаций JSON:", err);
-            });
-
+            .then(function(locations) { renderQuantumMap(locations); })
+            .catch(function(err) { console.error("Ошибка загрузки внешней базы локаций JSON:", err); });
         function renderQuantumMap(locations) {
-            var myMap = new ymaps.Map("map", {
-                center: [55.5, 38.0],
-                zoom: 11,
-                controls: ['zoomControl']
-            });
-
+            var myMap = new ymaps.Map("map", { center: [55.5, 38.0], zoom: 11, controls: ['zoomControl'] });
             var urlParams = new URLSearchParams(window.location.search);
             var rawData = (urlParams.get('data') || '').trim();
-
             var currentUserQuant = "";
             var globalDataString = "";
-
-            if (rawData.length >= 4 && rawData.substr(2, 2) === "ZZ") {
-                currentUserQuant = rawData.substr(0, 2);
-                globalDataString = rawData.substr(4);
-            } else {
-                globalDataString = rawData;
-            }
-
+            if (rawData.length >= 4 && rawData.substr(2, 2) === "ZZ") { currentUserQuant = rawData.substr(0, 2); globalDataString = rawData.substr(4); } else { globalDataString = rawData; }
             var quantsDensity = {};
-            if (globalDataString.length >= 4 && globalDataString.length % 4 === 0) {
-                for (var i = 0; i < globalDataString.length; i += 4) {
-                    var qCode = globalDataString.substr(i, 2);
-                    var densityCode = globalDataString.substr(i + 2, 2);
-                    quantsDensity[qCode] = decodeB64(densityCode);
-                }
-            }
-
+            if (globalDataString.length >= 4 && globalDataString.length % 4 === 0) { for (var i = 0; i < globalDataString.length; i += 4) { var qCode = globalDataString.substr(i, 2); var densityCode = globalDataString.substr(i + 2, 2); quantsDensity[qCode] = decodeB64(densityCode); } }
             var currentUserLocationId = null;
             var activeGroup = "moscow_orbit";
-
-            for (var locId in locations) {
-                if (locations.hasOwnProperty(locId)) {
-                    var loc = locations[locId];
-                    if (loc.quants && loc.quants.indexOf(currentUserQuant) !== -1) {
-                        currentUserLocationId = locId;
-                        activeGroup = loc.group;
-                        break;
-                    }
-                }
-            }
-
+            for (var locId in locations) { if (locations.hasOwnProperty(locId)) { var loc = locations[locId]; if (loc.quants && loc.quants.indexOf(currentUserQuant) !== -1) { currentUserLocationId = locId; activeGroup = loc.group; break; } } }
             var mapCenter = [55.5, 38.0];
             var mapZoom = 11;
-
-            if (currentUserLocationId && locations[currentUserLocationId]) {
-                mapCenter = locations[currentUserLocationId].coords;
-            }
-
-            if (activeGroup === "ural_orbit") mapZoom = 10;
-            else if (activeGroup === "europe") mapZoom = 7;
-            else if (activeGroup === "global_space") mapZoom = 2;
-            else mapZoom = 11;
-
+            if (currentUserLocationId && locations[currentUserLocationId]) { mapCenter = locations[currentUserLocationId].coords; }
+            if (activeGroup === "ural_orbit") mapZoom = 10; else if (activeGroup === "europe") mapZoom = 7; else if (activeGroup === "global_space") mapZoom = 2; else mapZoom = 11;
             myMap.setCenter(mapCenter, mapZoom);
-
             for (var locId in locations) {
                 if (locations.hasOwnProperty(locId)) {
                     var loc = locations[locId];
                     var totalLocationPeople = 0;
                     var balloonLegendHtml = "";
-
-                    if (loc.quants && loc.quants.length > 0) {
-                        loc.quants.forEach(function(qCode) {
-                            var count = quantsDensity[qCode] || 0;
-                            totalLocationPeople += count;
-                            var loraName = getLoraQuantName(qCode);
-                            if (count > 0) {
-                                balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#ffaa00;'>" + count + " конт.</span><br>";
-                            } else {
-                                balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>";
-                            }
-                        });
-                    }
-
+                    if (loc.quants && loc.quants.length > 0) { loc.quants.forEach(function(qCode) { var count = quantsDensity[qCode] || 0; totalLocationPeople += count; var loraName = getLoraQuantName(qCode); if (count > 0) { balloonLegendHtml += "• <b>" + loraName + ":</b> <span style='color:#ffaa00;'>" + count + " конт.</span><br>"; } else { balloonLegendHtml += "• " + loraName + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>"; } }); }
                     var isUserHere = (locId === currentUserLocationId);
                     var markerPreset = 'islands#circleIcon';
                     var markerColor = '#8b949e';
                     var markerCaption = '';
+                    
+                    // 📐 НАСТРОЙКА ЖЕСТКИХ СЛОЕВ ОТРЕСОВКИ (Z-INDEX)
+                    var markerZIndex = 100; // По умолчанию для серых точек самый нижний слой
 
                     if (totalLocationPeople > 0) {
                         markerColor = '#ffaa00';
                         markerCaption = String(totalLocationPeople);
+                        markerZIndex = 500; // Активные оранжевые точки всплывают на средний слой
                     }
-
                     if (isUserHere) {
                         markerPreset = 'islands#circleDotIcon';
                         markerColor = '#00ff66';
                         if (totalLocationPeople === 0) markerCaption = "Я";
+                        markerZIndex = 1000; // Точка "Я" забирает абсолютный топ-приоритет
                     }
-
-                    var balloonBodyText = "<div style='font-family: monospace; font-size: 12px;'>";
-                    if (isUserHere) balloonBodyText += "<b style='color:#00ff66;'>[ СИГНАЛ ВАШЕГО ЭКЗОКОРТЕКСА ЗАФИКСИРОВАН ЗДЕСЬ ]</b><br><br>";
-                    balloonBodyText += "<b>Контуры активности секторов:</b><br>" + (balloonLegendHtml || "• Статичный узел Лабиринта") + "</div>";
-
-                    // 🔮 УМНЫЙ ЗАГОЛОВОК: Если имя в JSON пустое "", выводим "Локация #[ID]"
-                    var finalDisplayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
-
-                    var placemark = new ymaps.Placemark(loc.coords, {
-                        balloonContentHeader: finalDisplayName,
-                        balloonContentBody: balloonBodyText,
-                        iconCaption: markerCaption
-                    }, {
-                        preset: markerPreset,
-                        iconColor: markerColor
+                    var balloonBodyText = "<div style='font-family: monospace; font-size: 12px;'>"; if (isUserHere) balloonBodyText += "<b style='color:#00ff66;'>[ СИГНАЛ ВАШЕГО ЭКЗОКОРТЕКСА ЗАФИКСИРОВАН ЗДЕСЬ ]</b><br><br>"; balloonBodyText += "<b>Контуры активности секторов:</b><br>" + (balloonLegendHtml || "• Статичный узел Лабиринта") + "</div>"; var finalDisplayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
+                    
+                    var placemark = new ymaps.Placemark(loc.coords, { balloonContentHeader: finalDisplayName, balloonContentBody: balloonBodyText, iconCaption: markerCaption }, { 
+                        preset: markerPreset, 
+                        iconColor: markerColor,
+                        zIndex: markerZIndex // Вшиваем приоритет слоя в настройки Яндекса
                     });
-
                     myMap.geoObjects.add(placemark);
                 }
             }
         }
     });
 </script>
-
 </body>
 </html>
