@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EBAVGD // ТЕСТОВЫЙ СТЕНД И КАРТА</title>
-    
-    <!-- Твоё ОРИГИНАЛЬНОЕ, чистое подключение скрипта Яндекса из v4.4.0 -->
+    <title>EBAVGD // ТАКТИЧЕСКИЙ РАДАР</title>
+    <!-- Официальный и независимый API Яндекс Карт -->
     <script src="https://yandex.ru" type="text/javascript"></script>
-    
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #version-tag {
+            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
+            color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
+            font-size: 12px; font-weight: bold; z-index: 1000; box-shadow: 0 0 10px rgba(0,255,102,0.3); pointer-events: none;
+        }
         .diagnostic-box { 
             position: absolute; top: 20px; left: 20px; background: rgba(13, 17, 23, 0.90);
             border: 1px solid #30363d; padding: 15px; border-radius: 6px; box-shadow: 0 0 15px rgba(0,255,102,0.2); 
@@ -26,7 +29,7 @@
 <body>
 
 <div class="diagnostic-box">
-    <h3 style="margin-top:0;">SYSTEM // RADAR_STAND v5.6.4</h3>
+    <h3 style="margin-top:0;">SYSTEM // RADAR_STAND v5.6.5</h3>
     <hr style="border: 1px solid #30363d; margin-bottom: 8px;">
     <p style="margin: 4px 0;">Сырая строка: <span id="raw-url" class="orange-text">ПУСТО</span></p>
     <p style="margin: 4px 0;">Текущий квант: <span id="user-quant" class="green-text">НЕ ОПРЕДЕЛЕН</span></p>
@@ -49,19 +52,18 @@
 <div id="map"></div>
 
 <script type="text/javascript">
-    var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
-
-    function decodeB64(chars) {
-        if (!chars || chars.length !== 2) return 0;
-        var idx1 = B64_ALPHABET.indexOf(chars.charAt(0));
-        var idx2 = B64_ALPHABET.indexOf(chars.charAt(1));
-        return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
-    }
-
-    // Запускаем инициализацию строго через ready(), когда ядро Яндекса полностью собрало свои бандлы
+    // Запуск строго по твоему рабочему шаблону v4.4.0 - первой строчкой!
     ymaps.ready(function () {
         
-        // ⚡ 1. СНАЧАЛА ОТРАБАТЫВАЕТ НАШ ДЕКОДЕР ВНУТРИ ЦИКЛА КАРТЫ
+        // 🗺️ 1. Создаем карту (Центр и масштаб из твоей стабильной версии)
+        var myMap = new ymaps.Map("map", {
+            center: [55.0, 50.0], 
+            zoom: 3, 
+            controls: ['zoomControl']
+        });
+
+        // ⚡ 2. Логика декодера (Опущена внутрь ready, чтобы не ломать парсер браузера)
+        var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
         var urlParams = new URLSearchParams(window.location.search);
         var rawData = (urlParams.get('data') || '').trim();
 
@@ -82,21 +84,20 @@
             if (globalDataString.length >= 4 && globalDataString.length % 4 === 0) {
                 var tableBody = document.getElementById('result-table');
                 tableBody.innerHTML = "";
+                
                 for (var i = 0; i < globalDataString.length; i += 4) {
                     var qCode = globalDataString.substr(i, 2);
                     var densityCode = globalDataString.substr(i + 2, 2);
-                    var realCount = decodeB64(densityCode);
+                    
+                    // Декодирование Base64 прямо внутри цикла
+                    var idx1 = B64_ALPHABET.indexOf(densityCode.charAt(0));
+                    var idx2 = B64_ALPHABET.indexOf(densityCode.charAt(1));
+                    var realCount = (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
+
                     tableBody.innerHTML += "<tr><td class='green-text'>" + qCode + "</td><td class='orange-text'>" + realCount + " чел.</td></tr>";
                 }
             }
         }
-
-        // 🗺️ 2. СЛЕДОМ СРАЗУ ОТКРЫВАЕТСЯ ГОЛЫЙ ХОЛСТ КАРТЫ (Чистая копия твоей рабочей v4.4.0)
-        var myMap = new ymaps.Map("map", {
-            center: [55.5, 38.0], // Москва/Кратово
-            zoom: 5,              // Обзорный зум
-            controls: ['zoomControl']
-        });
     });
 </script>
 
