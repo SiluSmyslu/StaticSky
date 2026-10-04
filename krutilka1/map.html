@@ -3,46 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EBAVGD // ТЕСТОВЫЙ СТЕНД ДЕКОДЕРА</title>
+    <title>EBAVGD // ТЕСТОВЫЙ СТЕНД И КАРТА</title>
+    
+    <!-- Официальный API Яндекс Карт -->
+    <script src="https://yandex.ru" type="text/javascript"></script>
+    
     <style>
-        body, html { margin: 0; padding: 20px; background: #07090e; color: #8b949e; font-family: monospace; font-size: 14px; }
-        .diagnostic-box { background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; padding: 15px; border-radius: 6px; box-shadow: 0 0 15px rgba(0,255,102,0.1); max-width: 600px; margin: 0 auto; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; font-family: monospace; }
+        
+        /* 🗺️ КАРТА НА ВЕСЬ ЭКРАН КАК ЗАДНИЙ ФОН */
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* 🎛️ ДИАГНОСТИЧЕСКАЯ ПЛАШКА ПОВЕРХ КАРТЫ */
+        .diagnostic-box { 
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(13, 17, 23, 0.90); /* Сделали чуть прозрачнее, чтобы видеть карту */
+            border: 1px solid #30363d; 
+            padding: 15px; 
+            border-radius: 6px; 
+            box-shadow: 0 0 15px rgba(0,255,102,0.2); 
+            width: 380px; 
+            z-index: 1000; /* Жестко держим поверх карты */
+            color: #8b949e;
+            font-size: 12px;
+            pointer-events: auto; /* Чтобы таблица кликалась */
+        }
         .green-text { color: #00ff66; font-weight: bold; }
         .orange-text { color: #ffaa00; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #30363d; padding: 8px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #30363d; padding: 6px; text-align: left; }
         th { background: #0d1117; color: #00ff66; }
     </style>
 </head>
 <body>
 
+<!-- Наш проверенный диагностический блок поверх экрана -->
 <div class="diagnostic-box">
-    <h2>SYSTEM // DECODER_STAND v5.6.0_TEST</h2>
-    <hr style="border: 1px solid #30363d;">
+    <h3 style="margin-top:0;">SYSTEM // RADAR_STAND v5.6.1</h3>
+    <hr style="border: 1px solid #30363d; margin-bottom: 8px;">
+    <p style="margin: 4px 0;">Сырая строка: <span id="raw-url" class="orange-text">ПУСТО</span></p>
+    <p style="margin: 4px 0;">Текущий квант: <span id="user-quant" class="green-text">НЕ ОПРЕДЕЛЕН</span></p>
     
-    <p>Сырая строка из URL: <span id="raw-url" class="orange-text">ПУСТО</span></p>
-    <p>Текущий квант пользователя: <span id="user-quant" class="green-text">НЕ ОПРЕДЕЛЕН</span></p>
-    
-    <h3>РАСШИФРОВАННЫЙ ШЛЕЙФ ПЛОТНОСТИ:</h3>
     <table>
         <thead>
             <tr>
-                <th>Код кванта (Base64)</th>
-                <th>Число читателей (Десятичное)</th>
+                <th>Квант (B64)</th>
+                <th>Плотность (Десятич.)</th>
             </tr>
         </thead>
         <tbody id="result-table">
             <tr>
-                <td colspan="2" style="text-align: center; color: #58a6ff;">Ожидание шифра данных...</td>
+                <td colspan="2" style="text-align: center; color: #58a6ff;">Ожидание шифра...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<!-- Голый холст карты Яндекса на заднем плане -->
+<div id="map"></div>
+
 <script type="text/javascript">
     var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
 
-    // Базовый декодер пары символов
     function decodeB64(chars) {
         if (!chars || chars.length !== 2) return 0;
         var idx1 = B64_ALPHABET.indexOf(chars.charAt(0));
@@ -50,44 +81,45 @@
         return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
     }
 
-    // Запускаем парсинг параметров строки
+    // ⚡ ШАГ А: СНАЧАЛА ЗАПУСКАЕМ НАШ СТОПРОЦЕНТНЫЙ ДЕКОДЕР ТЕКСТА
     var urlParams = new URLSearchParams(window.location.search);
     var rawData = (urlParams.get('data') || '').trim();
 
     if (rawData.length > 0) {
         document.getElementById('raw-url').innerText = rawData;
-
-        var currentUserQuant = "ОТСУТСТВУЕТ (Голая ссылка)";
+        var currentUserQuant = "";
         var globalDataString = "";
 
-        // Проверяем и обходим маркер безопасности "ZZ"
         if (rawData.length >= 4 && rawData.substr(2, 2) === "ZZ") {
             currentUserQuant = rawData.substr(0, 2);
             globalDataString = rawData.substr(4);
-            document.getElementById('user-quant').innerText = currentUserQuant + " (Сдвиг за маркер ZZ)";
+            document.getElementById('user-quant').innerText = currentUserQuant;
         } else {
             globalDataString = rawData;
-            document.getElementById('user-quant').innerText = "ОТСУТСТВУЕТ (Заход без ZZ префикса)";
+            document.getElementById('user-quant').innerText = "НЕТ (Без ZZ)";
         }
 
-        // Нарезка шлейфа по 4 символа
         if (globalDataString.length >= 4 && globalDataString.length % 4 === 0) {
             var tableBody = document.getElementById('result-table');
-            tableBody.innerHTML = ""; // Очищаем заглушку ожидания
-
+            tableBody.innerHTML = "";
             for (var i = 0; i < globalDataString.length; i += 4) {
                 var qCode = globalDataString.substr(i, 2);
                 var densityCode = globalDataString.substr(i + 2, 2);
                 var realCount = decodeB64(densityCode);
-
-                // Добавляем строчку в нашу экранную таблицу
-                var row = "<tr><td class='green-text'>" + qCode + "</td><td class='orange-text'>" + realCount + " человек</td></tr>";
-                tableBody.innerHTML += row;
+                tableBody.innerHTML += "<tr><td class='green-text'>" + qCode + "</td><td class='orange-text'>" + realCount + " чел.</td></tr>";
             }
-        } else if (globalDataString.length > 0) {
-            document.getElementById('result-table').innerHTML = "<tr><td colspan='2' style='color:#f85149;'>ОШИБКА: Длина шлейфа данных не кратна 4 символам!</td></tr>";
         }
     }
+
+    // 🗺️ ШАГ Б: ОСТОРОЖНО ПОДКЛЮЧАЕМ ГОЛУЮ КАРТУ НА ЗАДНИЙ ПЛАН
+    ymaps.ready(function () {
+        var myMap = new ymaps.Map("map", {
+            center: [55.5, 38.0], // По умолчанию Кратово / Москва
+            zoom: 9,
+            controls: ['zoomControl']
+        });
+        // Больше ничего внутри ready не делаем! Никаких циклов, маркеров и условий.
+    });
 </script>
 
 </body>
