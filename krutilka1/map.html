@@ -3,29 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EBAVGD // КВАНТОВЫЙ МОНИТОР ЛАБИРИНТА</title>
-    <!-- Официальный и независимый API Яндекс Карт -->
-    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+    <title>EBAVGD // ТЕСТОВЫЙ СТЕНД ДЕКОДЕРА</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
-        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        #version-tag {
-            position: absolute; top: 10px; left: 10px; background: rgba(13, 17, 23, 0.95);
-            color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px;
-            font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.3); pointer-events: none;
-        }
+        body, html { margin: 0; padding: 20px; background: #07090e; color: #8b949e; font-family: monospace; font-size: 14px; }
+        .diagnostic-box { background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; padding: 15px; border-radius: 6px; box-shadow: 0 0 15px rgba(0,255,102,0.1); max-width: 600px; margin: 0 auto; }
+        .green-text { color: #00ff66; font-weight: bold; }
+        .orange-text { color: #ffaa00; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #30363d; padding: 8px; text-align: left; }
+        th { background: #0d1117; color: #00ff66; }
     </style>
 </head>
 <body>
 
-<div id="version-tag">SYSTEM // MONOLITH_STABLE v5.5.5</div>
-<div id="map"></div>
+<div class="diagnostic-box">
+    <h2>SYSTEM // DECODER_STAND v5.6.0_TEST</h2>
+    <hr style="border: 1px solid #30363d;">
+    
+    <p>Сырая строка из URL: <span id="raw-url" class="orange-text">ПУСТО</span></p>
+    <p>Текущий квант пользователя: <span id="user-quant" class="green-text">НЕ ОПРЕДЕЛЕН</span></p>
+    
+    <h3>РАСШИФРОВАННЫЙ ШЛЕЙФ ПЛОТНОСТИ:</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Код кванта (Base64)</th>
+                <th>Число читателей (Десятичное)</th>
+            </tr>
+        </thead>
+        <tbody id="result-table">
+            <tr>
+                <td colspan="2" style="text-align: center; color: #58a6ff;">Ожидание шифра данных...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 <script type="text/javascript">
     var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
 
-    // Безопасный декодер Base64
+    // Базовый декодер пары символов
     function decodeB64(chars) {
         if (!chars || chars.length !== 2) return 0;
         var idx1 = B64_ALPHABET.indexOf(chars.charAt(0));
@@ -33,127 +50,44 @@
         return (idx1 === -1 || idx2 === -1) ? 0 : (idx1 * 64) + idx2;
     }
 
-    // Инициализация карты по каноническому шаблону ready()
-    ymaps.ready(function () {
-        
-        // --- 🗺️ ТЕСТОВАЯ МАТРИЦА: ТОЛЬКО 3 ПЕРВЫЕ ЛОКАЦИИ ДЛЯ ДЕБАГА ---
-        var locations = {
-            "1": { "name": "", "coords": [55.632947, 37.798636], "quants": ["00","02","03","0i","0j","0C","0D","0I"], "group": "moscow_orbit" },
-            "2": { "name": "", "coords": [59.931591, 30.355250], "quants": ["01"], "group": "moscow_orbit" },
-            "3": { "name": "", "coords": [55.705285, 37.894380], "quants": ["04","0k"], "group": "moscow_orbit" }
-        };
+    // Запускаем парсинг параметров строки
+    var urlParams = new URLSearchParams(window.location.search);
+    var rawData = (urlParams.get('data') || '').trim();
 
-        var urlParams = new URLSearchParams(window.location.search);
-        var rawData = (urlParams.get('data') || '').trim();
+    if (rawData.length > 0) {
+        document.getElementById('raw-url').innerText = rawData;
 
-        var currentUserQuant = "";
+        var currentUserQuant = "ОТСУТСТВУЕТ (Голая ссылка)";
         var globalDataString = "";
 
-        // Разбираем префикс текущего положения и обходим маркер безопасности "ZZ"
+        // Проверяем и обходим маркер безопасности "ZZ"
         if (rawData.length >= 4 && rawData.substr(2, 2) === "ZZ") {
-            currentUserQuant = rawData.substr(0, 2); // Код кванта пользователя
-            globalDataString = rawData.substr(4);    // Шлейф плотности
-        } else if (rawData.length > 0) {
-            globalDataString = rawData; 
+            currentUserQuant = rawData.substr(0, 2);
+            globalDataString = rawData.substr(4);
+            document.getElementById('user-quant').innerText = currentUserQuant + " (Сдвиг за маркер ZZ)";
+        } else {
+            globalDataString = rawData;
+            document.getElementById('user-quant').innerText = "ОТСУТСТВУЕТ (Заход без ZZ префикса)";
         }
 
-        // --- 📊 ПРОХОД А: Декодируем шлейф плотности по 4 символа ---
-        var quantsDensity = {};
+        // Нарезка шлейфа по 4 символа
         if (globalDataString.length >= 4 && globalDataString.length % 4 === 0) {
+            var tableBody = document.getElementById('result-table');
+            tableBody.innerHTML = ""; // Очищаем заглушку ожидания
+
             for (var i = 0; i < globalDataString.length; i += 4) {
                 var qCode = globalDataString.substr(i, 2);
                 var densityCode = globalDataString.substr(i + 2, 2);
-                quantsDensity[qCode] = decodeB64(densityCode);
+                var realCount = decodeB64(densityCode);
+
+                // Добавляем строчку в нашу экранную таблицу
+                var row = "<tr><td class='green-text'>" + qCode + "</td><td class='orange-text'>" + realCount + " человек</td></tr>";
+                tableBody.innerHTML += row;
             }
+        } else if (globalDataString.length > 0) {
+            document.getElementById('result-table').innerHTML = "<tr><td colspan='2' style='color:#f85149;'>ОШИБКА: Длина шлейфа данных не кратна 4 символам!</td></tr>";
         }
-
-        // Вычисляем центр и зум динамически ДО создания объекта карты
-        var defaultCenter = [55.5, 38.0]; // По умолчанию Москва/Кратово
-        var defaultZoom = 11;
-
-        if (currentUserQuant !== "") {
-            for (var locId in locations) {
-                if (locations.hasOwnProperty(locId)) {
-                    var loc = locations[locId];
-                    if (loc.quants && loc.quants.indexOf(currentUserQuant) !== -1) {
-                        defaultCenter = loc.coords;
-                        if (loc.group === "ural_orbit") defaultZoom = 10;
-                        else if (loc.group === "europe") defaultZoom = 7;
-                        else if (loc.group === "global_space") defaultZoom = 2;
-                        else defaultZoom = 11;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Создаем карту строго с финальными координатами, как в твоем v4.4.0
-        var myMap = new ymaps.Map("map", {
-            center: defaultCenter,
-            zoom: defaultZoom,
-            controls: ['zoomControl']
-        });
-
-        // --- 🎨 ПРОХОД Б: Математическое суммирование и рендеринг локаций ---
-        for (var locId in locations) {
-            if (locations.hasOwnProperty(locId)) {
-                var loc = locations[locId];
-                var totalLocationPeople = 0;
-                var balloonLegendHtml = "";
-
-                if (loc.quants && loc.quants.length > 0) {
-                    loc.quants.forEach(function(qCode) {
-                        var count = quantsDensity[qCode] || 0;
-                        totalLocationPeople += count;
-                        
-                        if (count > 0) {
-                            balloonLegendHtml += "• <b>Код " + qCode + ":</b> <span style='color:#ffaa00;'>" + count + " конт.</span><br>";
-                        } else {
-                            balloonLegendHtml += "• Код " + qCode + ": <span style='color:#8b949e;'>0 (ПУСТО)</span><br>";
-                        }
-                    });
-                }
-
-                // Проверяем, находится ли пользователь тут
-                var isUserHere = false;
-                if (currentUserQuant !== "" && loc.quants && loc.quants.indexOf(currentUserQuant) !== -1) {
-                    isUserHere = true;
-                }
-
-                var markerPreset = 'islands#circleIcon';
-                var markerColor = '#8b949e'; // Спящий серый
-                var markerCaption = '';
-
-                if (totalLocationPeople > 0) {
-                    markerColor = '#ffaa00'; // Активный оранжевый
-                    markerCaption = String(totalLocationPeople);
-                }
-
-                if (isUserHere) {
-                    markerPreset = 'islands#circleDotIcon'; // Включаем тактическую мишень ровно по центру координатной точки
-                    markerColor = '#00ff66';              // Сигнальный зеленый
-                    if (totalLocationPeople === 0) markerCaption = "Я";
-                }
-
-                var balloonBodyText = "<div style='font-family: monospace; font-size: 12px;'>";
-                if (isUserHere) balloonBodyText += "<b style='color:#00ff66;'>[ СИГНАЛ ВАШЕГО ЭКЗОКОРТЕКСА ЗАФИКСИРОВАН ЗДЕСЬ ]</b><br><br>";
-                balloonBodyText += "<b>Контуры активности секторов:</b><br>" + (balloonLegendHtml || "• Статичный узел Лабиринта") + "</div>";
-
-                var finalDisplayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
-
-                var placemark = new ymaps.Placemark(loc.coords, {
-                    balloonContentHeader: finalDisplayName,
-                    balloonContentBody: balloonBodyText,
-                    iconCaption: markerCaption
-                }, {
-                    preset: markerPreset,
-                    iconColor: markerColor
-                });
-
-                myMap.geoObjects.add(placemark);
-            }
-        }
-    });
+    }
 </script>
 
 </body>
