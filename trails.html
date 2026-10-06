@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EBAVGD // КАРТА СЛЕДОВ (ТРИАЛ)</title>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #version-tag { position: absolute; top: 10px; left: 10px; background: rgba(13,17,23,0.95); color: #00ff66; padding: 6px 12px; border: 1px solid #30363d; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: bold; z-index: 1000; box-shadow: 0 0 10px rgba(0,255,102,0.3); pointer-events: none; }
+        #err { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(13,17,23,0.98); border: 1px solid #ff4444; color: #ff8888; padding: 20px 28px; font-family: monospace; font-size: 14px; border-radius: 6px; z-index: 2000; max-width: 80vw; text-align: center; }
+    </style>
+</head>
+<body>
+<div id="version-tag">SYSTEM // TRAIL_MAP v1.0.0_TRIAL</div>
+<div id="err"></div>
+<div id="map"></div>
+<script type="text/javascript">
+    var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+
+    // Единый декодер: работает и для 2, и для 4 символов.
+    function decodeB64(str) {
+        if (typeof str !== 'string' || str.length === 0) return -1;
+        var v = 0;
+        for (var i = 0; i < str.length; i++) {
+            var idx = B64_ALPHABET.indexOf(str.charAt(i));
+            if (idx === -1) return -1;
+            v = v * 64 + idx;
+        }
+        return v;
+    }
+
+    function getLoraQuantName(sysCode) {
+        if (!sysCode || sysCode.length !== 2) return sysCode;
+        var t = decodeB64(sysCode);
+        if (t < 0) return "???";
+        if (t <= 59)  return "Квант А" + t;
+        if (t <= 91)  return "Квант Б" + (t - 59);
+        if (t <= 122) return "Квант В" + (t - 91);
+        if (t <= 177) return "Квант Г" + (t - 122);
+        if (t <= 190) return "Квант Д" + (t - 177);
+        if (t <= 241) return "Квант Е" + (t - 190);
+        return sysCode;
+    }
+
+    function showError(msg) {
+        var el = document.getElementById('err');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    ymaps.ready(function () {
+        Promise.all([
+            fetch('locations.json').then(function (r) { return r.json(); }),
+            fetch('washere.json').then(function (r) { return r.json(); })
+        ]).then(function (res) {
+            renderTrailMap(res[0], res[1]);
+        }).catch(function (e) {
+            console.error(e);
+            showError("Не удалось загрузить базу локаций или слепок следов.");
+        });
+
+        function renderTrailMap(locations, washereSnapshot) {
+            var urlParams = new URLSearchParams(window.location.search);
+            var data = (urlParams.get('data') || '').trim();
+
+            if (data.length !== 8) {
+                showError("Ссылка повреждена: ожидается 8 символов, получено " + data.length + ".");
+                return;
+            }
+
+            var userQuant    = data.slice(0, 2);
+            var currentCount = decodeB64(data.slice(2, 4));
+            var everCount    = decodeB64(data.slice(4, 8));
+
+            if (decodeB64(userQuant) < 0 || currentCount < 0 || everCount < 0) {
+                showError("Ссылка повреждена: недопустимые символы в коде.");
+                return;
+            }
+
+            // Ищем, в какой локации сидит юзер
+            var currentUserLocationId = null;
+            var activeGroup = "moscow_orbit";
+            for (var locId in locations) {
+                if (!locations.hasOwnProperty(locId)) continue;
+                var loc = locations[locId];
+                if (loc.quants && loc.quants.indexOf(userQuant) !== -1) {
+                    currentUserLocationId = locId;
+                    activeGroup = loc.group;
+                    break;
+                }
+            }
+
+            if (!currentUserLocationId) {
+                showError("Ваш квант " + userQuant + " (" + getLoraQuantName(userQuant) + ") не найден в базе локаций.");
+                return;
+            }
+
+            // Собираем карту следов: слепок + перетирание юзерского кванта
+            var washere = {};
+            for (var q in washereSnapshot) {
+                if (washereSnapshot.hasOwnProperty(q)) washere[q] = washereSnapshot[q];
+            }
+            washere[userQuant] = everCount;
+
+            var myMap = new ymaps.Map("map", { center: [55.5, 38.0], zoom: 11, controls: ['zoomControl'] });
+            var mapZoom = 11;
+            if (activeGroup === "ural_orbit")   mapZoom = 10;
+            else if (activeGroup === "europe")  mapZoom = 7;
+            else if (activeGroup === "global_space") mapZoom = 2;
+            myMap.setCenter(locations[currentUserLocationId].coords, mapZoom);
+
+            // Рисуем
+            for (var locId in locations) {
+                if (!locations.hasOwnProperty(locId)) continue;
+                var loc = locations[locId];
+
+                var totalEver = 0;
+                var balloonLegend = "";
+
+                if (loc.quants && loc.quants.length > 0) {
+                    loc.quants.forEach(function (qCode) {
+                        var cnt = washere[qCode] || 0;
+                        totalEver += cnt;
+                        balloonLegend += "• " + getLoraQuantName(qCode) +
+                                         ": <b>" + cnt + "</b> побывало<br>";
+                        if (qCode === userQuant) {
+                            balloonLegend += "&nbsp;&nbsp;<span style='color:#00ff66;'>сейчас здесь: " + currentCount + "</span><br>";
+                        }
+                    });
+                }
+
+                var isUserHere = (locId === currentUserLocationId);
+                var preset  = 'islands#circleIcon';
+                var color   = '#8b949e';        // серый по умолчанию
+                var caption = '';
+                var z       = 100;
+
+                if (totalEver > 0) {
+                    color   = '#0088ff';        // синий
+                    caption = String(totalEver);
+                    z       = 500;
+                }
+                if (isUserHere) {
+                    preset  = 'islands#circleDotIcon';
+                    color   = '#00ff66';        // зелёный
+                    caption = 'Я';
+                    z       = 1000;
+                }
+
+                var displayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
+                var balloon = "<div style='font-family: monospace; font-size: 12px;'>";
+                if (isUserHere) {
+                    balloon += "<b style='color:#00ff66;'>[ ВЫ ЗДЕСЬ ]</b><br>";
+                    balloon += "Сейчас в кванте: <b>" + currentCount + "</b><br><br>";
+                }
+                balloon += "<b>Следы читателей:</b><br>" + (balloonLegend || "• Пока никого");
+                balloon += "</div>";
+
+                var pm = new ymaps.Placemark(loc.coords, {
+                    balloonContentHeader: displayName,
+                    balloonContentBody: balloon,
+                    iconCaption: caption
+                }, {
+                    preset: preset,
+                    iconColor: color,
+                    zIndex: z
+                });
+                myMap.geoObjects.add(pm);
+            }
+        }
+    });
+</script>
+</body>
+</html>
