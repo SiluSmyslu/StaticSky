@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-<div id="version-tag">SYSTEM // QUANT_TRAILS v1.0.0</div>
+<div id="version-tag">SYSTEM // QUANT_TRAILS v1.1.1</div>
 <div id="hint">Карта не знает сейчас в каком вы кванте. Перейдите по ссылке из @EBAVGD_bot</div>
 <div id="map"></div>
 <script type="text/javascript">
@@ -56,6 +56,18 @@
         if (t <= 190) return "Квант Д" + (t - 177);
         if (t <= 241) return "Квант Е" + (t - 190);
         return sysCode;
+    }
+
+    // Плюрализация. По умолчанию работает как обычный русский плюрал
+    // (1 / 2-4 / 5+), но можно передать one === few === many, чтобы получить
+    // упрощённые формы, например plural(n, "побывал", "побывало", "побывало").
+    function plural(n, one, few, many) {
+        var mod100 = Math.abs(n) % 100;
+        var mod10  = mod100 % 10;
+        if (mod100 > 10 && mod100 < 20) return many;
+        if (mod10 === 1)               return one;
+        if (mod10 >= 2 && mod10 <= 4)  return few;
+        return many;
     }
 
     function showHint() {
@@ -92,7 +104,6 @@
                 currentCount = decodeB64(data.slice(2, 4));
                 everCount    = decodeB64(data.slice(4, 8));
             } else {
-                // Пустой data или битая ссылка — просто подсказка, карта всё равно рисуется
                 showHint();
             }
 
@@ -110,13 +121,12 @@
                     }
                 }
                 if (!currentUserLocationId) {
-                    // Квант валиден, но такой локации в базе нет — ведём себя как «карта не знает»
                     validData = false;
                     showHint();
                 }
             }
 
-            // Карта следов: слепок + перетирание кванта юзера (если знаем, где он)
+            // Карта следов: слепок + перетирание кванта юзера
             var washere = {};
             for (var q in washereSnapshot) {
                 if (washereSnapshot.hasOwnProperty(q)) washere[q] = washereSnapshot[q];
@@ -125,8 +135,8 @@
 
             var myMap = new ymaps.Map("map", { center: [55.5, 38.0], zoom: 11, controls: ['zoomControl'] });
             var mapZoom = 11;
-            if (activeGroup === "ural_orbit")   mapZoom = 10;
-            else if (activeGroup === "europe")  mapZoom = 7;
+            if (activeGroup === "ural_orbit")        mapZoom = 10;
+            else if (activeGroup === "europe")       mapZoom = 7;
             else if (activeGroup === "global_space") mapZoom = 2;
 
             if (validData && currentUserLocationId) {
@@ -144,11 +154,10 @@
                     loc.quants.forEach(function (qCode) {
                         var cnt = washere[qCode] || 0;
                         totalEver += cnt;
+                        // Синие: «5 побывало», «21 побывал», «101 побывал»
+                        var wasWord = plural(cnt, "побывал", "побывало", "побывало");
                         balloonLegend += "• " + getLoraQuantName(qCode) +
-                                         ": <b>" + cnt + "</b> побывало<br>";
-                        if (validData && qCode === userQuant) {
-                            balloonLegend += "&nbsp;&nbsp;<span style='color:#00ff66;'>сейчас здесь: " + currentCount + "</span><br>";
-                        }
+                                         ": <b>" + cnt + "</b> " + wasWord + "<br>";
                     });
                 }
 
@@ -173,8 +182,11 @@
                 var displayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
                 var balloon = "<div style='font-family: monospace; font-size: 12px;'>";
                 if (isUserHere) {
+                    var nowWord  = plural(currentCount, "читатель", "читателя", "читателей");
+                    var everWord = plural(everCount,    "побывал",  "побывало", "побывало");
                     balloon += "<b style='color:#00ff66;'>[ ВЫ ЗДЕСЬ ]</b><br>";
-                    balloon += "Сейчас в кванте: <b>" + currentCount + "</b><br><br>";
+                    balloon += "Сейчас здесь: <b>" + currentCount + "</b> " + nowWord + "<br>";
+                    balloon += "Ранее побывало: <b>" + everCount + "</b> " + everWord + "<br><br>";
                 }
                 balloon += "<b>Следы читателей:</b><br>" + (balloonLegend || "• Пока никого");
                 balloon += "</div>";
