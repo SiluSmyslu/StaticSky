@@ -173,7 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // Делаем авторизованный запрос к приватному хе хе хе:) репозиторию за файлом req.json
-        const response = await fetch(`https://github.com{GITHUB_USER}/${PRIVATE_REPO}/contents/${FILE_PATH}`, {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${PRIVATE_REPO}/contents/${FILE_PATH}`, {
             headers: {
                 "Authorization": `token ${token}`,
                 "Accept": "application/vnd.github.v3.raw"
