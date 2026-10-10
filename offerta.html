@@ -171,6 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const charCode = parseInt(f.substr(i, 2), 16) ^ g.charCodeAt((i / 2) % g.length);
                 resBase64 += String.fromCharCode(charCode);
             }
+            const missingPadding = (4 - (resBase64.length % 4)) % 4; if (missingPadding > 0) resBase64 = resBase64.padEnd(resBase64.length + missingPadding, '=');
             const decodedBytes = Uint8Array.from(atob(resBase64), c => c.charCodeAt(0));
             return new TextDecoder().decode(decodedBytes);
         } catch (m) {
