@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EBAVGD // QUANT TRAILS</title>
+    <meta property="og:title" content="EBAVGD // QUANT TRAILS">
+    <meta property="og:description" content="Каждый раз эта карта чуть-чуть другая. Кто-то прошёл, кто-то задержался.">
+    <meta property="og:image" content="https://silusmyslu.github.io/StaticSky/og-image.png">
+    <meta property="og:url" content="https://silusmyslu.github.io/StaticSky/trails.html">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #07090e; overflow: hidden; }
@@ -28,11 +34,27 @@
     </style>
 </head>
 <body>
-<div id="version-tag">SYSTEM // QUANT_TRAILS v1.1.1</div>
+<div id="version-tag">SYSTEM // QUANT_TRAILS v2.4.0</div>
 <div id="hint">Карта не знает сейчас в каком вы кванте. Перейдите по ссылке из @EBAVGD_bot</div>
 <div id="map"></div>
 <script type="text/javascript">
     var B64_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+
+    var COLOR = {
+        empty:   '#8b949e',
+        wasHere: '#0088ff',
+        nowHere: '#00e5ff',
+        me:      '#00ff66'
+    };
+
+    var BUBBLES_HARDCODED = {
+        "1_": 1,
+        "2m": 1
+    };
+
+    function getBubbles(qCode) {
+        return BUBBLES_HARDCODED[qCode] || 0;
+    }
 
     function decodeB64(str) {
         if (typeof str !== 'string' || str.length === 0) return -1;
@@ -58,9 +80,6 @@
         return sysCode;
     }
 
-    // Плюрализация. По умолчанию работает как обычный русский плюрал
-    // (1 / 2-4 / 5+), но можно передать one === few === many, чтобы получить
-    // упрощённые формы, например plural(n, "побывал", "побывало", "побывало").
     function plural(n, one, few, many) {
         var mod100 = Math.abs(n) % 100;
         var mod10  = mod100 % 10;
@@ -89,25 +108,42 @@
             var urlParams = new URLSearchParams(window.location.search);
             var data = (urlParams.get('data') || '').trim();
 
-            // Валидный data — ровно 8 символов, все из base64-алфавита
-            var validData = (data.length === 8);
-            if (validData) {
-                var chk = decodeB64(data.slice(0, 2)) >= 0 &&
-                          decodeB64(data.slice(2, 4)) >= 0 &&
-                          decodeB64(data.slice(4, 8)) >= 0;
-                if (!chk) validData = false;
+            var validData = false;
+            var hasTail   = false;
+            var userQuant = null;
+            var currentCount = 0;
+            var everCount = 0;
+            var nowOther = {};
+
+            if (data.length >= 8) {
+                var head = data.slice(0, 8);
+                var tail = data.slice(8);
+
+                var headOk = decodeB64(head.slice(0, 2)) >= 0 &&
+                             decodeB64(head.slice(2, 4)) >= 0 &&
+                             decodeB64(head.slice(4, 8)) >= 0;
+
+                var tailOk = (tail.length % 4 === 0);
+                if (tailOk) {
+                    for (var i = 0; i < tail.length; i += 4) {
+                        var qc = tail.slice(i, i + 2);
+                        var nc = decodeB64(tail.slice(i + 2, i + 4));
+                        if (decodeB64(qc) < 0 || nc < 0) { tailOk = false; break; }
+                        nowOther[qc] = nc;
+                    }
+                }
+
+                if (headOk && tailOk) {
+                    validData    = true;
+                    hasTail      = (tail.length > 0);
+                    userQuant    = head.slice(0, 2);
+                    currentCount = decodeB64(head.slice(2, 4));
+                    everCount    = decodeB64(head.slice(4, 8));
+                }
             }
 
-            var userQuant = null, currentCount = 0, everCount = 0;
-            if (validData) {
-                userQuant    = data.slice(0, 2);
-                currentCount = decodeB64(data.slice(2, 4));
-                everCount    = decodeB64(data.slice(4, 8));
-            } else {
-                showHint();
-            }
+            if (!validData) showHint();
 
-            // Ищем локацию юзера
             var currentUserLocationId = null;
             var activeGroup = "moscow_orbit";
             if (validData) {
@@ -126,14 +162,36 @@
                 }
             }
 
-            // Карта следов: слепок + перетирание кванта юзера
             var washere = {};
             for (var q in washereSnapshot) {
                 if (washereSnapshot.hasOwnProperty(q)) washere[q] = washereSnapshot[q];
             }
             if (validData) washere[userQuant] = everCount;
 
-            var myMap = new ymaps.Map("map", { center: [55.5, 38.0], zoom: 11, controls: ['zoomControl'] });
+            var nowMap = {};
+            for (var q2 in nowOther) {
+                if (nowOther.hasOwnProperty(q2)) nowMap[q2] = nowOther[q2];
+            }
+            if (validData) nowMap[userQuant] = currentCount;
+
+            var bubbleMap = {};
+            if (hasTail) {
+                for (var qb in BUBBLES_HARDCODED) {
+                    if (BUBBLES_HARDCODED.hasOwnProperty(qb)) {
+                        bubbleMap[qb] = BUBBLES_HARDCODED[qb];
+                    }
+                }
+            }
+
+            var othersInOtherQuants = 0;
+            for (var qn in nowMap) {
+                if (!nowMap.hasOwnProperty(qn)) continue;
+                if (qn === userQuant) continue;
+                othersInOtherQuants += nowMap[qn];
+            }
+            var liveMode = (othersInOtherQuants > 0);
+
+            var myMap = new ymaps.Map("map", { center: [55.0, 40.0], zoom: 4, controls: ['zoomControl'] });
             var mapZoom = 11;
             if (activeGroup === "ural_orbit")        mapZoom = 10;
             else if (activeGroup === "europe")       mapZoom = 7;
@@ -143,55 +201,123 @@
                 myMap.setCenter(locations[currentUserLocationId].coords, mapZoom);
             }
 
-            for (var locId in locations) {
-                if (!locations.hasOwnProperty(locId)) continue;
-                var loc = locations[locId];
+            for (var locId2 in locations) {
+                if (!locations.hasOwnProperty(locId2)) continue;
+                var loc2 = locations[locId2];
 
-                var totalEver = 0;
-                var balloonLegend = "";
+                var totalEver    = 0;
+                var totalNow     = 0;
+                var totalBubbles = 0;
 
-                if (loc.quants && loc.quants.length > 0) {
-                    loc.quants.forEach(function (qCode) {
-                        var cnt = washere[qCode] || 0;
-                        totalEver += cnt;
-                        // Синие: «5 побывало», «21 побывал», «101 побывал»
-                        var wasWord = plural(cnt, "побывал", "побывало", "побывало");
-                        balloonLegend += "• " + getLoraQuantName(qCode) +
-                                         ": <b>" + cnt + "</b> " + wasWord + "<br>";
+                if (loc2.quants && loc2.quants.length > 0) {
+                    loc2.quants.forEach(function (qCode) {
+                        totalEver    += (washere[qCode]   || 0);
+                        totalNow     += (nowMap[qCode]    || 0);
+                        totalBubbles += (bubbleMap[qCode] || 0);
                     });
                 }
 
-                var isUserHere = (validData && locId === currentUserLocationId);
+                var isUserHere = (validData && locId2 === currentUserLocationId);
+
                 var preset  = 'islands#circleIcon';
-                var color   = '#8b949e';
+                var color   = COLOR.empty;
                 var caption = '';
                 var z       = 100;
 
                 if (totalEver > 0) {
-                    color   = '#0088ff';
-                    caption = String(totalEver);
+                    color = COLOR.wasHere;
+                    caption = liveMode ? '' : String(totalEver);
+                    z = 200;
+                }
+                if (totalNow > 0) {
+                    color   = COLOR.nowHere;
+                    caption = String(totalNow);
                     z       = 500;
                 }
                 if (isUserHere) {
                     preset  = 'islands#circleDotIcon';
-                    color   = '#00ff66';
-                    caption = 'Я';
+                    color   = COLOR.me;
+                    var othersInQuant = Math.max(0, currentCount - 1);
+                    caption = (othersInQuant > 0) ? ('Я +' + othersInQuant) : 'Я';
                     z       = 1000;
                 }
 
-                var displayName = (loc.name && loc.name.trim() !== "") ? loc.name : "Локация #" + locId;
+                var displayName = (loc2.name && loc2.name.trim() !== "") ? loc2.name : "Локация #" + locId2;
                 var balloon = "<div style='font-family: monospace; font-size: 12px;'>";
+
+                var userBub = bubbleMap[userQuant] || 0;
+
                 if (isUserHere) {
-                    var nowWord  = plural(currentCount, "читатель", "читателя", "читателей");
-                    var everWord = plural(everCount,    "побывал",  "побывало", "побывало");
-                    balloon += "<b style='color:#00ff66;'>[ ВЫ ЗДЕСЬ ]</b><br>";
-                    balloon += "Сейчас здесь: <b>" + currentCount + "</b> " + nowWord + "<br>";
-                    balloon += "Ранее здесь " + everWord + ": <b>" + everCount + "</b><br><br>";
+                    var quantShort = getLoraQuantName(userQuant).replace(/^Квант /, "");
+                    var bubSuffix = (userBub > 0) ? " <span style='color:" + COLOR.empty + ";'>(" + userBub + " 🌀)</span>" : "";
+                    balloon += "<b style='color:" + COLOR.me + ";'>[ ВЫ ЗДЕСЬ — в кванте " + quantShort + " ]</b><br>";
+                    balloon += "Сейчас здесь: <b>" + currentCount + "</b> " +
+                               plural(currentCount, "читатель", "читателя", "читателей") + bubSuffix + "<br>";
+                    balloon += "Ранее здесь " +
+                               plural(everCount, "побывал", "побывало", "побывало") +
+                               ": <b>" + everCount + "</b><br>";
+                } else if (hasTail) {
+                    if (totalNow > 0) {
+                        var bubSuffix2 = (totalBubbles > 0) ? " <span style='color:" + COLOR.empty + ";'>(" + totalBubbles + " 🌀)</span>" : "";
+                        balloon += "<span style='color:" + COLOR.nowHere + ";'>Сейчас здесь: <b>" + totalNow + "</b> " +
+                                   plural(totalNow, "читатель", "читателя", "читателей") + bubSuffix2 + "</span><br>";
+                    } else {
+                        balloon += "<span style='color:" + COLOR.empty + ";'>Сейчас здесь никого</span><br>";
+                    }
+                } else {
+                    if (totalEver > 0) {
+                        balloon += "<span style='color:" + COLOR.wasHere + ";'>Здесь " +
+                                   plural(totalEver, "побывал", "побывало", "побывало") +
+                                   ": <b>" + totalEver + "</b> " +
+                                   plural(totalEver, "читатель", "читателя", "читателей") + "</span><br>";
+                    } else {
+                        balloon += "<span style='color:" + COLOR.empty + ";'>Здесь пока никого</span><br>";
+                    }
                 }
-                balloon += "<b>Следы читателей:</b><br>" + (balloonLegend || "• Пока никого");
+
+                balloon += "<br><b>Кванты:</b><br>";
+
+                if (loc2.quants && loc2.quants.length > 0) {
+                    loc2.quants.forEach(function (qCode) {
+                        var ever = washere[qCode]   || 0;
+                        var now  = nowMap[qCode]    || 0;
+                        var bub  = bubbleMap[qCode] || 0;
+                        var line = "• " + getLoraQuantName(qCode) + ": ";
+
+                        if (hasTail) {
+                            if (now > 0) {
+                                line += "<span style='color:" + COLOR.nowHere + ";'>сейчас <b>" + now + "</b>";
+                                if (bub > 0) {
+                                    line += " <span style='color:" + COLOR.empty + ";'>(" + bub + " 🌀)</span>";
+                                }
+                                line += "</span>";
+                                if (ever > 0) {
+                                    line += ", всего <b>" + ever + "</b> " +
+                                            plural(ever, "побывал", "побывало", "побывало");
+                                }
+                            } else if (ever > 0) {
+                                line += "<span style='color:" + COLOR.empty + ";'>сейчас тихо</span>, всего <b>" + ever + "</b> " +
+                                        plural(ever, "побывал", "побывало", "побывало");
+                            } else {
+                                line += "<span style='color:" + COLOR.empty + ";'>здесь никого не было</span>";
+                            }
+                        } else {
+                            if (ever > 0) {
+                                line += "<b>" + ever + "</b> " +
+                                        plural(ever, "побывал", "побывало", "побывало");
+                            } else {
+                                line += "<span style='color:" + COLOR.empty + ";'>здесь никого не было</span>";
+                            }
+                        }
+                        balloon += line + "<br>";
+                    });
+                } else {
+                    balloon += "<span style='color:" + COLOR.empty + ";'>• Статичный узел</span>";
+                }
+
                 balloon += "</div>";
 
-                var pm = new ymaps.Placemark(loc.coords, {
+                var pm = new ymaps.Placemark(loc2.coords, {
                     balloonContentHeader: displayName,
                     balloonContentBody: balloon,
                     iconCaption: caption
